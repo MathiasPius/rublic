@@ -1,5 +1,5 @@
 -- This file should undo anything in `up.sql`
 
-DROP TABLE rublic.domain_group_mappings;
-DROP TABLE rublic.domain_groups;
-DROP TABLE rublic.domains;
+DROP TABLE IF EXISTS rublic.entry_group_mappings;
+DROP TABLE IF EXISTS rublic.domain_groups;
+DROP TABLE IF EXISTS rublic.domain_entries;

@@ -29,6 +29,7 @@ use std::env;
 use crate::models::DbExecutor;
 
 mod credentials;
+mod domains;
 mod authorization;
 
 fn main() {

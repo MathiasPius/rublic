@@ -2,32 +2,34 @@ use actix_web::{AsyncResponder, FutureResponse, HttpResponse, Json, ResponseErro
 use futures::future::Future;
 
 use crate::cryptutil::CryptUtil;
-use crate::app::AppState;
+use crate::app::{AppState, RublicFeatureRouter};
 use crate::credentials::models::{internal::*, external::*};
 
-pub fn register(router: Scope<AppState>) -> Scope<AppState> {
-    router
-        // Credentials
-        .resource("/credentials", |r| {
-            r.method(Method::POST).with(new_access_credential);
-            r.method(Method::GET).with(get_all_access_credentials);
-        })
-        .resource("/credentials/{access_credential_id}", |r| {
-            r.method(Method::GET).with(get_expanded_access_credential);
-        })
+pub struct RublicCredentialsRouter { }
+impl RublicFeatureRouter for RublicCredentialsRouter {
+    fn register(router: Scope<AppState>) -> Scope<AppState> {
+        router
+            .nested("/credentials", |credentials| {
+                credentials
+                    .resource("/{access_credential_id}", |r| {
+                        r.method(Method::GET).with(get_expanded_access_credential);
+                    })
+                    .resource("", |r| {
+                        r.method(Method::POST).with(new_access_credential);
+                        r.method(Method::GET).with(get_all_access_credentials);
+                    })
+            })
 
-        // Access Groups
-        .resource("/accessgroups", |r| {
-            r.method(Method::GET).with(get_all_access_groups);
-        })
-        .resource("/accessgroups/{access_group_id}", |r| {
-            r.method(Method::GET).with(get_expanded_access_group)
-        })
-        /*
-        .resource("/certificates/{certificate_id}", |r| {
-            r.method(Method::GET).with(get_certificate_by_id);
-        })
-        */
+            .nested("/accessgroups", |accessgroups| {
+                accessgroups
+                    .resource("/{access_group_id}", |r| {
+                        r.method(Method::GET).with(get_expanded_access_group)
+                    })
+                    .resource("", |r| {
+                        r.method(Method::GET).with(get_all_access_groups);
+                    })
+            })
+    }
 }
 
 fn new_access_credential((request, state): (Json<CreateAccessCredentialRequest>, State<AppState>))

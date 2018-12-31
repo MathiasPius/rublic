@@ -1,39 +1,80 @@
-use actix_web::{AsyncResponder, FutureResponse, HttpResponse, Json, ResponseError, State, http::Method, Scope, Path};
+use actix_web::{AsyncResponder, FutureResponse, HttpResponse, /*Json,*/ ResponseError, State, http::Method, Scope, Path};
 use futures::future::Future;
 
-use crate::app::AppState;
-use crate::domains::models::{NewCertificateEntry, GetCertificateById};
+use crate::app::{AppState, RublicFeatureRouter};
+use crate::domains::models::{internal::*, /*external::**/};
 
-pub fn register(router: Scope<AppState>) -> Scope<AppState> {
-    router
-        .resource("/certificates/", |r| {
-            r.method(Method::POST).with(new_certificate_entry);
-        })
-        .resource("/certificates/{certificate_id}", |r| {
-            r.method(Method::GET).with(get_certificate_by_id);
-        })
+pub struct RublicDomainsRouter { }
+impl RublicFeatureRouter for RublicDomainsRouter {
+    fn register(router: Scope<AppState>) -> Scope<AppState> {
+        router
+            .nested("/domains", |domains| {
+                domains.resource("/{domain_entry_id}", |r| {
+                    r.method(Method::GET).with(get_expanded_domain_entry)
+                })
+                .resource("", |r| {
+                    r.method(Method::GET).with(get_all_domain_entries)
+                })
+            })
+            
+            .nested("/domaingroups", |domaingroups| {
+                domaingroups
+                    .resource("/{domain_group_id}", |r| {
+                        r.method(Method::GET).with(get_expanded_domain_group)
+                    })
+                    .resource("", |r| {
+                        r.method(Method::GET).with(get_all_domain_groups)
+                    })
+            })
+    }
 }
 
-fn new_certificate_entry((certificate_entry, state): (Json<NewCertificateEntry>, State<AppState>))
+fn get_expanded_domain_entry((domain_entry_id, state): (Path<String>, State<AppState>)) 
     -> FutureResponse<HttpResponse> {
+
     state
         .db
-        .send(certificate_entry.into_inner())
+        .send(GetExpandedDomainEntry { id: domain_entry_id.into_inner() })
         .from_err()
         .and_then(|db_response| match db_response {
-            Ok(certificate) => Ok(HttpResponse::Ok().json(certificate)),
+            Ok(credential) => Ok(HttpResponse::Ok().json(credential)),
             Err(err) => Ok(err.error_response()),
         }).responder()
 }
 
-fn get_certificate_by_id((certificate_id, state): (Path<String>, State<AppState>))
-    -> FutureResponse<HttpResponse> {
+fn get_all_domain_entries(state: State<AppState>) -> FutureResponse<HttpResponse>
+{
     state
         .db
-        .send(GetCertificateById { id: certificate_id.into_inner() })
+        .send(GetAllDomainEntries {})
         .from_err()
         .and_then(|db_response| match db_response {
-            Ok(certificate) => Ok(HttpResponse::Ok().json(certificate)),
-            Err(err) => Ok(err.error_response()),
+            Ok(domains) => Ok(HttpResponse::Ok().json(domains)),
+            Err(err) => Ok(err.error_response())
+        }).responder()
+}
+
+fn get_expanded_domain_group((domain_group_id, state): (Path<String>, State<AppState>))
+    -> FutureResponse<HttpResponse> {
+
+    state
+        .db
+        .send(GetExpandedDomainGroup { id: domain_group_id.into_inner() })
+        .from_err()
+        .and_then(|db_response| match db_response {
+            Ok(group) => Ok(HttpResponse::Ok().json(group)),
+            Err(err) => Ok(err.error_response())
+        }).responder()
+}
+
+fn get_all_domain_groups(state: State<AppState>) -> FutureResponse<HttpResponse>
+{
+    state
+        .db
+        .send(GetAllDomainGroups {})
+        .from_err()
+        .and_then(|db_response| match db_response {
+            Ok(groups) => Ok(HttpResponse::Ok().json(groups)),
+            Err(err) => Ok(err.error_response())
         }).responder()
 }

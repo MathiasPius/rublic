@@ -76,7 +76,7 @@ impl Handler<GetExpandedAccessCredential> for DbExecutor {
             .limit(1)
             .load::<AccessCredential>(conn)
             .map_err(|_| ServiceError::InternalServerError)?
-            .pop().ok_or(ServiceError::InternalServerError)?;
+            .pop().ok_or(ServiceError::NotFound("credential not found".into()))?;
 
         let groups = credential_group_mappings::table
             .filter(credential_group_mappings::access_credential_id.eq(&msg.id))
@@ -95,7 +95,6 @@ impl Handler<GetExpandedAccessCredential> for DbExecutor {
         })
     }
 }
-
 
 
 impl Handler<GetExpandedAccessGroup> for DbExecutor {

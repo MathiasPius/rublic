@@ -5,7 +5,7 @@ pub mod internal {
     use crate::schema::{access_credentials, access_groups, credential_group_mappings};
     use super::external::*;
 
-    // Datastructures
+    // Data
     #[derive(Identifiable, Queryable, Insertable, Associations)]
     pub struct AccessCredential {
         pub id: String,
@@ -54,6 +54,7 @@ pub mod internal {
     impl Message for GetExpandedAccessCredential {
         type Result = Result<ExpandedAccessCredential, ServiceError>;
     }
+
 
     #[derive(Serialize, Deserialize)]
     pub struct GetExpandedAccessGroup {
