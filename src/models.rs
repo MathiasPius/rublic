@@ -13,3 +13,17 @@ pub struct DbExecutor(pub Pool<ConnectionManager<MysqlConnection>>);
 impl Actor for DbExecutor {
     type Context = SyncContext<Self>;
 }
+
+#[macro_export]
+macro_rules! actor_command {
+    ($command:ident( $($names:ident : $types:ty),* ) -> $output:ty) => {
+        #[derive(Serialize, Deserialize)]
+        pub struct $command {
+            $(pub $names : $types),*
+        }
+
+        impl Message for $command {
+            type Result = Result<$output, ServiceError>;
+        }
+    }
+}

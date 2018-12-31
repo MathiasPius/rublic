@@ -30,46 +30,11 @@ pub mod internal {
 
 
     // Commands
-    #[derive(Serialize, Deserialize)]
-    pub struct CreateAccessCredential {
-        pub friendly_name: String,
-        pub hashed_key: String
-    }
-
-    impl Message for CreateAccessCredential {
-        type Result = Result<AccessCredential, ServiceError>;
-    }
-
-    #[derive(Serialize, Deserialize)]
-    pub struct GetAllAccessCredentials { }
-    impl Message for GetAllAccessCredentials {
-        type Result = Result<SimpleAccessCredentialsList, ServiceError>;
-    }
-
-    #[derive(Serialize, Deserialize)]
-    pub struct GetExpandedAccessCredential {
-        pub id: String
-    }
-
-    impl Message for GetExpandedAccessCredential {
-        type Result = Result<ExpandedAccessCredential, ServiceError>;
-    }
-
-
-    #[derive(Serialize, Deserialize)]
-    pub struct GetExpandedAccessGroup {
-        pub id: String
-    }
-
-    impl Message for GetExpandedAccessGroup {
-        type Result = Result<ExpandedAccessGroup, ServiceError>;
-    }
-
-    #[derive(Serialize, Deserialize)]
-    pub struct GetAllAccessGroups { }
-    impl Message for GetAllAccessGroups {
-        type Result = Result<SimpleAccessGroupsList, ServiceError>;
-    }
+    actor_command! (CreateAccessCredential(friendly_name: String, hashed_key: String) -> AccessCredential);
+    actor_command! (GetAllAccessCredentials() -> SimpleAccessCredentialsList);
+    actor_command! (GetExpandedAccessCredential(id: String) -> ExpandedAccessCredential);
+    actor_command! (GetExpandedAccessGroup(id: String) -> ExpandedAccessGroup);
+    actor_command! (GetAllAccessGroups() -> SimpleAccessGroupsList);
 }
 
 

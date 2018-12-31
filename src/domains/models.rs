@@ -28,38 +28,22 @@ pub mod internal {
         pub domain_group_id: String
     }
 
+    /*
+    #[derive(Identifiable, Queryable, Insertable, Associations)]
+    #[belongs_to(DomainGroup)]
+    #[belongs_to(AccessGroup)]
+    pub struct GroupPermission {
+        pub id: String,
+        pub access_group_id: String,
+        pub domain_group_id: String
+    }
+    */
 
     // Commands
-    #[derive(Serialize, Deserialize)]
-    pub struct GetExpandedDomainEntry {
-        pub id: String
-    }
-
-    impl Message for GetExpandedDomainEntry {
-        type Result = Result<ExpandedDomainEntry, ServiceError>;
-    }
-
-    #[derive(Serialize, Deserialize)]
-    pub struct GetAllDomainEntries { }
-    impl Message for GetAllDomainEntries {
-        type Result = Result<SimpleDomainEntriesList, ServiceError>;
-    }
-
-
-    #[derive(Serialize, Deserialize)]
-    pub struct GetExpandedDomainGroup {
-        pub id: String
-    }
-
-    impl Message for GetExpandedDomainGroup {
-        type Result = Result<ExpandedDomainGroup, ServiceError>;
-    }
-
-    #[derive(Serialize, Deserialize)]
-    pub struct GetAllDomainGroups { }
-    impl Message for GetAllDomainGroups {
-        type Result = Result<SimpleDomainGroupsList, ServiceError>;
-    }
+    actor_command! (GetExpandedDomainEntry(id: String) -> ExpandedDomainEntry);
+    actor_command! (GetAllDomainEntries() -> SimpleDomainEntriesList);
+    actor_command! (GetExpandedDomainGroup(id: String) -> ExpandedDomainGroup);
+    actor_command! (GetAllDomainGroups() -> SimpleDomainGroupsList);
 }
 
 

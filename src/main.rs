@@ -16,7 +16,7 @@ extern crate itertools;
 #[macro_use] extern crate failure;
 
 mod app;
-mod models;
+#[macro_use] mod models;
 mod schema;
 mod errors;
 mod cryptutil;
