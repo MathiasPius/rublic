@@ -29,6 +29,7 @@ use std::env;
 use crate::models::DbExecutor;
 
 mod credentials;
+mod authorization;
 
 fn main() {
     std::env::set_var("RUST_LOG", "actix_web=info");

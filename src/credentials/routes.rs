@@ -7,12 +7,21 @@ use crate::credentials::models::{internal::*, external::*};
 
 pub fn register(router: Scope<AppState>) -> Scope<AppState> {
     router
+        // Credentials
         .resource("/credentials", |r| {
             r.method(Method::POST).with(new_access_credential);
             r.method(Method::GET).with(get_all_access_credentials);
         })
         .resource("/credentials/{access_credential_id}", |r| {
             r.method(Method::GET).with(get_expanded_access_credential);
+        })
+
+        // Access Groups
+        .resource("/accessgroups", |r| {
+            r.method(Method::GET).with(get_all_access_groups);
+        })
+        .resource("/accessgroups/{access_group_id}", |r| {
+            r.method(Method::GET).with(get_expanded_access_group)
         })
         /*
         .resource("/certificates/{certificate_id}", |r| {
@@ -70,16 +79,27 @@ fn get_expanded_access_credential((access_credential_id, state): (Path<String>, 
         }).responder()
 }
 
-/*
-fn get_certificate_by_id((certificate_id, state): (Path<String>, State<AppState>))
+fn get_expanded_access_group((access_group_id, state): (Path<String>, State<AppState>)) 
     -> FutureResponse<HttpResponse> {
+
     state
         .db
-        .send(GetCertificateById { id: certificate_id.into_inner() })
+        .send(GetExpandedAccessGroup { id: access_group_id.into_inner() })
         .from_err()
         .and_then(|db_response| match db_response {
-            Ok(certificate) => Ok(HttpResponse::Ok().json(certificate)),
+            Ok(group) => Ok(HttpResponse::Ok().json(group)),
             Err(err) => Ok(err.error_response()),
         }).responder()
 }
-*/
+
+fn get_all_access_groups(state: State<AppState>) -> FutureResponse<HttpResponse>
+{
+    state
+        .db
+        .send(GetAllAccessGroups {})
+        .from_err()
+        .and_then(|db_response| match db_response {
+            Ok(groups) => Ok(HttpResponse::Ok().json(groups)),
+            Err(err) => Ok(err.error_response()),
+        }).responder()
+}

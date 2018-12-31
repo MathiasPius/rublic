@@ -3,7 +3,7 @@ pub mod internal {
     use serde_derive::{Serialize, Deserialize};
     use crate::errors::ServiceError;
     use crate::schema::{access_credentials, access_groups, credential_group_mappings};
-    use super::external::{SimpleAccessCredentialsList, ExpandedAccessCredential};
+    use super::external::*;
 
     // Datastructures
     #[derive(Identifiable, Queryable, Insertable, Associations)]
@@ -54,6 +54,21 @@ pub mod internal {
     impl Message for GetExpandedAccessCredential {
         type Result = Result<ExpandedAccessCredential, ServiceError>;
     }
+
+    #[derive(Serialize, Deserialize)]
+    pub struct GetExpandedAccessGroup {
+        pub id: String
+    }
+
+    impl Message for GetExpandedAccessGroup {
+        type Result = Result<ExpandedAccessGroup, ServiceError>;
+    }
+
+    #[derive(Serialize, Deserialize)]
+    pub struct GetAllAccessGroups { }
+    impl Message for GetAllAccessGroups {
+        type Result = Result<SimpleAccessGroupsList, ServiceError>;
+    }
 }
 
 
@@ -80,12 +95,6 @@ pub mod external {
     }
 
     #[derive(Serialize, Deserialize)]
-    pub struct SimpleAccessGroup {
-        pub id: String,
-        pub friendly_name: String
-    }
-
-    #[derive(Serialize, Deserialize)]
     pub struct ExpandedAccessCredential {
         pub id: String,
         pub friendly_name: String,
@@ -95,5 +104,24 @@ pub mod external {
     #[derive(Serialize, Deserialize)]
     pub struct SimpleAccessCredentialsList {
         pub credentials: Vec<SimpleAccessCredential>
+    }
+
+
+    #[derive(Serialize, Deserialize)]
+    pub struct SimpleAccessGroup {
+        pub id: String,
+        pub friendly_name: String
+    }
+
+    #[derive(Serialize, Deserialize)]
+    pub struct ExpandedAccessGroup {
+        pub id: String,
+        pub friendly_name: String,
+        pub credentials: Vec<SimpleAccessCredential>
+    }
+
+    #[derive(Serialize, Deserialize)]
+    pub struct SimpleAccessGroupsList {
+        pub groups: Vec<SimpleAccessGroup>
     }
 }
