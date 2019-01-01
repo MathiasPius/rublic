@@ -16,7 +16,6 @@ pub mod internal {
     #[derive(Identifiable, Queryable, Insertable, Associations)]
     pub struct AccessGroup {
         pub id: String,
-        pub friendly_name: String
     }
 
     #[derive(Identifiable, Queryable, Insertable, Associations)]

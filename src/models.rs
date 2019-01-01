@@ -1,10 +1,7 @@
 // models.rs
 use actix::{Actor, SyncContext};
-use actix_web::{FutureResponse, HttpResponse, AsyncResponder};
 use diesel::mysql::MysqlConnection;
 use diesel::r2d2::{ConnectionManager, Pool};
-use futures::future::Future;
-use crate::errors::ServiceError;
 
 /// This is db executor actor. can be run in parallel
 pub struct DbExecutor(pub Pool<ConnectionManager<MysqlConnection>>);
@@ -22,23 +19,13 @@ impl Actor for DbExecutor {
 #[macro_export]
 macro_rules! actor_command {
     ($command:ident( $($names:ident : $types:ty),* ) -> $output:ty) => {
-        #[derive(Serialize, Deserialize)]
+        #[derive(serde_derive::Serialize, serde_derive::Deserialize)]
         pub struct $command {
             $(pub $names : $types),*
         }
 
-        impl Message for $command {
-            type Result = Result<$output, ServiceError>;
+        impl actix::Message for $command {
+            type Result = Result<$output, crate::errors::ServiceError>;
         }
     }
-}
-
-pub fn into_api_response<T: serde::Serialize>(response: impl Future<Item = T, Error = ServiceError> + 'static) 
-    -> FutureResponse<HttpResponse> {
-    response
-        .and_then(|result|
-            Ok(HttpResponse::Ok().json(result))
-        )
-        .from_err()
-        .responder()
 }

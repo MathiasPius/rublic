@@ -19,7 +19,9 @@ mod app;
 #[macro_use] mod models;
 mod schema;
 mod errors;
-mod cryptutil;
+//mod cryptutil;
+mod database;
+mod api;
 
 use actix::prelude::*;
 use actix_web::server;
@@ -27,10 +29,6 @@ use diesel::{r2d2::ConnectionManager, MysqlConnection};
 use dotenv::dotenv;
 use std::env;
 use crate::models::DbExecutor;
-
-mod credentials;
-mod domains;
-mod authorization;
 
 fn main() {
     std::env::set_var("RUST_LOG", "actix_web=info");
