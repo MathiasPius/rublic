@@ -4,6 +4,7 @@ use futures::future::*;
 use crate::errors::ServiceError;
 use crate::app::{AppState, RublicFeatureRouter};
 use crate::domains::models::{internal::*, external::*};
+use crate::models::into_api_response;
 
 pub struct RublicDomainsRouter { }
 impl RublicFeatureRouter for RublicDomainsRouter {
@@ -33,10 +34,10 @@ impl RublicFeatureRouter for RublicDomainsRouter {
 }
 
 
-fn get_domains_groups(state: State<AppState>, id: String) -> impl Future<Item = Vec<SimpleDomainGroup>, Error = ServiceError> {
+fn get_domains_groups(state: State<AppState>, id: String) 
+    -> impl Future<Item = Vec<SimpleDomainGroup>, Error = ServiceError> {
     state.db
-        .send(GetDomainGroupsByDomainEntry { id: id })
-        .flatten()
+        .send(GetDomainGroupsByDomainEntry { id }).flatten()
         .and_then(|groups| 
             Ok(groups.into_iter().map(|group| SimpleDomainGroup {
                 id: group.id,
@@ -45,11 +46,11 @@ fn get_domains_groups(state: State<AppState>, id: String) -> impl Future<Item = 
         )
 }
 
-fn get_domain_entry((domain_entry_fqdn, state): (Path<String>, State<AppState>))
-    -> FutureResponse<HttpResponse> {
-  
-    state.db.send(GetDomainEntryByFqdn{ fqdn: domain_entry_fqdn.into_inner() })
-        .flatten()
+fn get_domain_by_fqdn(state: State<AppState>, fqdn: String)
+    -> impl Future<Item = PluggableDomainEntry, Error = ServiceError> {
+
+    state.db
+        .send(GetDomainEntryByFqdn { fqdn }).flatten()
         .and_then(|domain| 
             get_domains_groups(state, domain.id.clone())
                 .and_then(|groups| Ok(PluggableDomainEntry {
@@ -58,12 +59,15 @@ fn get_domain_entry((domain_entry_fqdn, state): (Path<String>, State<AppState>))
                     groups: Some(groups)
                 }))
         )
-        .and_then(|result|
-            Ok(HttpResponse::Ok().json(result))
-        )
-        .from_err()
-        .responder()
 }
+
+fn get_domain_entry((domain_entry_fqdn, state): (Path<String>, State<AppState>))
+    -> FutureResponse<HttpResponse> {
+  
+    into_api_response(get_domain_by_fqdn(state, domain_entry_fqdn.to_string()))
+}
+
+
 
 fn get_all_domain_entries(state: State<AppState>) -> FutureResponse<HttpResponse>
 {

@@ -60,6 +60,8 @@ pub mod external {
     pub struct PluggableDomainEntry {
         pub id: String,
         pub fqdn: String,
+        
+        #[serde(skip_serializing_if = "Option::is_none")]
         pub groups: Option<Vec<SimpleDomainGroup>>
     }
 
