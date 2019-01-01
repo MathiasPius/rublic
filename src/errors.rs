@@ -33,3 +33,9 @@ impl ResponseError for ServiceError {
         }
     }
 }
+
+impl std::convert::From<actix::MailboxError> for ServiceError {
+    fn from(_: actix::MailboxError) -> Self {
+        ServiceError::InternalServerError
+    }
+}

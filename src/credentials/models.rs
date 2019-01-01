@@ -28,7 +28,6 @@ pub mod internal {
         pub access_group_id: String
     }
 
-
     // Commands
     actor_command! (CreateAccessCredential(friendly_name: String, hashed_key: String) -> AccessCredential);
     actor_command! (GetAllAccessCredentials() -> SimpleAccessCredentialsList);

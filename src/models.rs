@@ -2,6 +2,7 @@
 use actix::{Actor, SyncContext};
 use diesel::mysql::MysqlConnection;
 use diesel::r2d2::{ConnectionManager, Pool};
+use serde_derive::Deserialize;
 
 /// This is db executor actor. can be run in parallel
 pub struct DbExecutor(pub Pool<ConnectionManager<MysqlConnection>>);
@@ -14,6 +15,14 @@ impl Actor for DbExecutor {
     type Context = SyncContext<Self>;
 }
 
+#[derive(Deserialize)]
+pub struct ExpansionOption {
+    pub expand: String
+}
+
+
+// This macro just expands some function declaration-like syntax into an
+// actor message implementation to avoid repetitive boilerplate code
 #[macro_export]
 macro_rules! actor_command {
     ($command:ident( $($names:ident : $types:ty),* ) -> $output:ty) => {

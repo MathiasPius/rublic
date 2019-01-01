@@ -46,6 +46,7 @@ table! {
 table! {
     group_permissions (id) {
         id -> Char,
+        permission -> Varchar,
         access_group_id -> Char,
         domain_group_id -> Char,
     }

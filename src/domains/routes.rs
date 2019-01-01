@@ -1,16 +1,19 @@
 use actix_web::{AsyncResponder, FutureResponse, HttpResponse, /*Json,*/ ResponseError, State, http::Method, Scope, Path};
-use futures::future::Future;
+use futures::future::*;
 
+use crate::errors::ServiceError;
 use crate::app::{AppState, RublicFeatureRouter};
-use crate::domains::models::{internal::*, /*external::**/};
+use crate::domains::models::{internal::*, external::*};
 
 pub struct RublicDomainsRouter { }
 impl RublicFeatureRouter for RublicDomainsRouter {
     fn register(router: Scope<AppState>) -> Scope<AppState> {
         router
             .nested("/domains", |domains| {
-                domains.resource("/{domain_entry_id}", |r| {
-                    r.method(Method::GET).with(get_expanded_domain_entry)
+                domains.nested("/{domain_entry_id}", |entry| {
+                    entry.resource("", |r| {
+                        r.method(Method::GET).with(get_domain_entry)
+                    })
                 })
                 .resource("", |r| {
                     r.method(Method::GET).with(get_all_domain_entries)
@@ -29,17 +32,37 @@ impl RublicFeatureRouter for RublicDomainsRouter {
     }
 }
 
-fn get_expanded_domain_entry((domain_entry_id, state): (Path<String>, State<AppState>)) 
-    -> FutureResponse<HttpResponse> {
 
-    state
-        .db
-        .send(GetExpandedDomainEntry { id: domain_entry_id.into_inner() })
+fn get_domains_groups(state: State<AppState>, id: String) -> impl Future<Item = Vec<SimpleDomainGroup>, Error = ServiceError> {
+    state.db
+        .send(GetDomainGroupsByDomainEntry { id: id })
+        .flatten()
+        .and_then(|groups| 
+            Ok(groups.into_iter().map(|group| SimpleDomainGroup {
+                id: group.id,
+                friendly_name: group.friendly_name
+            }).collect())
+        )
+}
+
+fn get_domain_entry((domain_entry_fqdn, state): (Path<String>, State<AppState>))
+    -> FutureResponse<HttpResponse> {
+  
+    state.db.send(GetDomainEntryByFqdn{ fqdn: domain_entry_fqdn.into_inner() })
+        .flatten()
+        .and_then(|domain| 
+            get_domains_groups(state, domain.id.clone())
+                .and_then(|groups| Ok(PluggableDomainEntry {
+                    id: domain.id.clone(),
+                    fqdn: domain.fqdn,
+                    groups: Some(groups)
+                }))
+        )
+        .and_then(|result|
+            Ok(HttpResponse::Ok().json(result))
+        )
         .from_err()
-        .and_then(|db_response| match db_response {
-            Ok(credential) => Ok(HttpResponse::Ok().json(credential)),
-            Err(err) => Ok(err.error_response()),
-        }).responder()
+        .responder()
 }
 
 fn get_all_domain_entries(state: State<AppState>) -> FutureResponse<HttpResponse>

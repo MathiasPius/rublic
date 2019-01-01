@@ -30,6 +30,7 @@ pub fn create_app(db: Addr<DbExecutor>) -> App<AppState> {
     let state = AppState { 
         db
     };
+    
     App::with_state(state)
         // setup builtin logger to get nice logging for each request
         .middleware(middleware::Logger::new("\"%r\" %s %b %Dms"))

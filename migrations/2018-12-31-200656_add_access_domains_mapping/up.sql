@@ -2,6 +2,7 @@
 
 CREATE TABLE IF NOT EXISTS rublic.group_permissions (
 	id CHAR(36) NOT NULL,
+	permission VARCHAR(64) NOT NULL,
     access_group_id CHAR(36) NOT NULL,
     domain_group_id CHAR(36) NOT NULL,
 	CONSTRAINT access_domain_mappings_PK PRIMARY KEY (id),

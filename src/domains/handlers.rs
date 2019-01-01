@@ -7,6 +7,90 @@ use std::iter::Iterator;
 use crate::models::DbExecutor;
 use crate::errors::ServiceError;
 use crate::domains::models::{internal::*, external::*};
+use crate::credentials::models::{internal::*};
+
+impl Handler<GetDomainEntryByFqdn> for DbExecutor {
+    type Result = Result<DomainEntry, ServiceError>;
+
+    fn handle(&mut self, msg: GetDomainEntryByFqdn, _: &mut Self::Context) -> Self::Result {
+        use crate::schema::*;
+        let conn: &MysqlConnection = &self.0.get().unwrap();
+
+        let mut entry = domain_entries::table
+            .filter(domain_entries::fqdn.eq(&msg.fqdn))
+            .load::<DomainEntry>(conn)
+            .map_err(|_| ServiceError::InternalServerError)?;
+
+        // There should never be more than one entry per fqdn.
+        // Fail just in case there's a security issue here
+        if entry.len() > 1 {
+            return Err(ServiceError::InternalServerError);
+        }
+
+        Ok(entry.pop().ok_or(ServiceError::NotFound("domain with given fqdn not found".into()))?)
+    }
+}
+
+impl Handler<GetDomainGroupsByDomainEntry> for DbExecutor {
+    type Result = Result<Vec<DomainGroup>, ServiceError>;
+
+    fn handle(&mut self, msg: GetDomainGroupsByDomainEntry, _: &mut Self::Context) -> Self::Result {
+        use crate::schema::*;
+        let conn: &MysqlConnection = &self.0.get().unwrap();
+
+        let groups = entry_group_mappings::table
+            .filter(entry_group_mappings::domain_entry_id.eq(&msg.id))
+            .inner_join(domain_groups::table)
+            .select((domain_groups::id, domain_groups::friendly_name))
+            .load::<DomainGroup>(conn)
+            .map_err(|_| ServiceError::InternalServerError)?;
+
+        Ok(groups)
+    }
+}
+
+impl Handler<GetAccessGroupsByDomainGroup> for DbExecutor {
+    type Result = Result<Vec<AccessGroup>, ServiceError>;
+
+    fn handle(&mut self, msg: GetAccessGroupsByDomainGroup, _: &mut Self::Context) -> Self::Result {
+        use crate::schema::*;
+        let conn: &MysqlConnection = &self.0.get().unwrap();
+
+        let groups = group_permissions::table
+            .filter(group_permissions::domain_group_id.eq(&msg.id))
+            .inner_join(access_groups::table)
+            .select((access_groups::id, access_groups::friendly_name))
+            .load::<AccessGroup>(conn)
+            .map_err(|_| ServiceError::InternalServerError)?;
+
+        Ok(groups)
+    }
+}
+
+impl Handler<GetAccessCredentialsByAccessGroup> for DbExecutor {
+    type Result = Result<Vec<AccessCredential>, ServiceError>;
+
+    fn handle(&mut self, msg: GetAccessCredentialsByAccessGroup, _: &mut Self::Context) -> Self::Result {
+        use crate::schema::*;
+        let conn: &MysqlConnection = &self.0.get().unwrap();
+
+        let credentials = credential_group_mappings::table
+            .filter(credential_group_mappings::access_group_id.eq(&msg.id))
+            .inner_join(access_credentials::table)
+            .select((access_credentials::id, access_credentials::friendly_name, access_credentials::hashed_key))
+            .load::<AccessCredential>(conn)
+            .map_err(|_| ServiceError::InternalServerError)?;
+
+        Ok(credentials)
+    }
+}
+
+
+
+
+
+
+// OLD SHIT GOES HERE
 
 impl Handler<GetExpandedDomainEntry> for DbExecutor {
     type Result = Result<ExpandedDomainEntry, ServiceError>;
