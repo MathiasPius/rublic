@@ -3,10 +3,12 @@ mod handlers;
 
 use std::fs::{read_dir};
 use std::path::PathBuf;
+use futures::Future;
 use std::collections::HashMap;
-use actix::{Actor, Context, Addr, Arbiter};
+use actix::{Actor, Context, Addr, Arbiter, ActorContext};
 use crate::errors::ServiceError;
 use crate::database::DbExecutor;
+use crate::database::messages::{CreateDomain, DeleteDomain};
 use crate::inotify::{Inotify, EventMask, WatchMask};
 
 // Listens for filesystem events
@@ -30,21 +32,31 @@ impl ArchiveWatcher {
         }
     }
 
+    pub fn watch(&mut self, path: PathBuf) {
+        // Spin up a new DomainWatcher for the directory
+        let watcher = DomainWatcher {
+            db: self.db.clone(),
+            dir: path.clone()
+        };
+
+        self.children.insert(
+            path.clone(), 
+            Arbiter::start(|_| watcher)
+        );
+
+        // Create domain in DB, but ignore if it already exists
+        self.db.send(CreateDomain { 
+            fqdn: path.file_name().unwrap().to_string_lossy().into() 
+        }).flatten().wait().ok();
+    }
+
     pub fn parse_domains(&mut self) -> Result<(), ServiceError> {
         if let Ok(entries) = read_dir(&self.dir) {
             for entry in entries {
                 if let Ok(entry) = entry {
                     if let Ok(filetype) = entry.file_type() {
                         if filetype.is_dir() {
-                            let watcher = DomainWatcher {
-                                db: self.db.clone(),
-                                dir: entry.path()
-                            };
-
-                            self.children.insert(
-                                entry.path(), 
-                                Arbiter::start(|_| watcher)
-                            );
+                            self.watch(entry.path());
                         }
                     }
                 }
@@ -63,13 +75,13 @@ impl Actor for ArchiveWatcher {
         self.parse_domains().unwrap();
 
         let mut watcher = Inotify::init()
-            .expect("failed to initialize Inotify instance");
+            .expect("AW: failed to initialize Inotify instance");
 
         watcher
-            .add_watch(&self.dir, WatchMask::CREATE | WatchMask::DELETE)
-            .expect("failed to start watching directory");
+            .add_watch(&self.dir, WatchMask::CREATE | WatchMask::MOVED_FROM | WatchMask::MOVED_TO | WatchMask::DELETE)
+            .expect("AW: failed to start watching directory");
 
-        println!("ArchiveWatcher for {} started!", &self.dir.display());
+        println!("AW for {} started!", &self.dir.display());
 
         let mut buffer = [0u8; 4096];
         loop {
@@ -82,40 +94,42 @@ impl Actor for ArchiveWatcher {
                     continue
                 }
 
-                if event.mask.contains(EventMask::CREATE) {
-                    println!("Domain created: {:?}", event.name);
-                    let mut fullpath = self.dir.clone();
-                    fullpath.push(event.name.unwrap());
+                if event.mask.intersects(EventMask::CREATE | EventMask::MOVED_TO) {
+                    if let Some(name) = event.name {
+                        println!("AW: domain {:?} was created!", name);
+                        let mut fullpath = self.dir.clone();
+                        fullpath.push(name);
 
-                    let watcher = DomainWatcher {
-                        db: self.db.clone(),
-                        dir: fullpath.clone()
-                    };
+                        self.watch(fullpath.clone());
+                    }
+                } else if event.mask.intersects(EventMask::DELETE | EventMask::MOVED_FROM) {
+                    if let Some(name) = event.name {
+                        let path = PathBuf::from(name);
 
-                    self.children.insert(
-                        fullpath, 
-                        Arbiter::start(|_| watcher)
-                    );
-                } else if event.mask.contains(EventMask::DELETE) {
-                    println!("Domain deleted: {:?}", event.name);
+                        println!("AW: domain {:?} was deleted!", name);
+                        if self.children.contains_key(&path) {
+                            self.children.remove(&path);
+                        }
+                    }
                 }
             }
         }
     }
 }
 
+
 impl Actor for DomainWatcher {
     type Context = Context<Self>;
 
-    fn started(&mut self, _ctx: &mut Self::Context) {
+    fn started(&mut self, ctx: &mut Self::Context) {
         let mut watcher = Inotify::init()
-            .expect("failed to initialize Inotify instance");
+            .expect("DW: failed to initialize Inotify instance");
 
         watcher
-            .add_watch(&self.dir, WatchMask::CREATE | WatchMask::MODIFY | WatchMask::DELETE | WatchMask::MOVED_FROM)
-            .expect("failed to start watching directory");
+            .add_watch(&self.dir, WatchMask::DELETE_SELF | WatchMask::MOVE_SELF | WatchMask::CREATE | WatchMask::DELETE | WatchMask::MOVED_FROM | WatchMask::MOVED_TO | WatchMask::CLOSE_WRITE | WatchMask::MODIFY)
+            .expect("DW: failed to start watching directory");
 
-        println!("DomainWatcher for {} started!", &self.dir.display());
+        println!("DW: for {} started!", &self.dir.display());
 
         let mut buffer = [0u8; 4096];
         loop {
@@ -124,18 +138,28 @@ impl Actor for DomainWatcher {
                 .expect("Failed to read inotify events");
 
             for event in events {
-                // Ignore all directory effects
-                /*if event.mask.contains(EventMask::ISDIR) {
-                    continue
-                }
-                */
+                if (EventMask::CREATE | EventMask::MODIFY | EventMask::CLOSE_WRITE | EventMask::MOVED_TO).intersects(event.mask) {
+                    println!("DW: certificate {:?} modified: {:?}", self.dir.file_name().unwrap(), event.name);
+                } else if (EventMask::DELETE | EventMask::MOVED_FROM).intersects(event.mask) {
+                    println!("DW: certificate {:?} deleted: {:?}", self.dir.file_name().unwrap(), event.name);
+                } else if (EventMask::DELETE_SELF | EventMask::MOVE_SELF).intersects(event.mask) {
+                    println!("DW: domain {:?} deleted! committing seppuku", self.dir.file_name().unwrap());
 
-                if event.mask.contains(EventMask::CREATE) || event.mask.contains(EventMask::MODIFY) {
-                    println!("Domain {:?} modified: {:?}", self.dir.file_name().unwrap(), event.name);
-                } else {
-                    println!("Domain {:?} deleted: {:?}", self.dir.file_name().unwrap(), event.name);
+                    let domain = DeleteDomain { 
+                        fqdn: self.dir.file_name().unwrap().to_string_lossy().into() 
+                    };
+
+                    self.db.send(domain)
+                        .flatten().wait().unwrap();
+
+                    ctx.stop();
+                    return;
                 }
             }
         }
+    }
+
+    fn stopped(&mut self, _: &mut Self::Context) {
+        println!("DW: watcher for {:?} is kill", self.dir.file_name().unwrap());
     }
 }

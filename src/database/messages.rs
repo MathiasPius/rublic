@@ -1,6 +1,7 @@
 use super::models::*;
 
 actor_command! (CreateDomain(fqdn: String) -> Domain);
+actor_command! (DeleteDomain(fqdn: String) -> usize);
 actor_command! (GetDomainByFqdn(fqdn: String) -> Domain);
 
 actor_command! (CreateUser(friendly_name: String, hashed_key: String) -> User);

@@ -45,6 +45,8 @@ pub struct UserGroupMapping {
 pub struct Certificate {
     pub id: i32,
     pub domain_id: String,
+    pub path: String,
+    pub friendly_name: String,
     pub not_before: NaiveDateTime,
     pub not_after: NaiveDateTime
 }

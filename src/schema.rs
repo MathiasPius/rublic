@@ -1,7 +1,9 @@
 table! {
-    certificates (domain_id, id) {
+    certificates (domain_id, id, friendly_name) {
         id -> Integer,
         domain_id -> Char,
+        friendly_name -> Varchar,
+        path -> Mediumtext,
         not_before -> Datetime,
         not_after -> Datetime,
     }

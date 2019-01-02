@@ -19,6 +19,13 @@ impl_handler! (CreateDomain(conn, msg) for DbExecutor {
     Ok(new_domain)
 });
 
+impl_handler! (DeleteDomain(conn, msg) for DbExecutor {
+    diesel::delete(domains::table)
+        .filter(domains::fqdn.eq(&msg.fqdn))
+        .execute(conn)
+        .map_err(|e| e.into())
+});
+
 impl_handler! (GetDomainByFqdn(conn, msg) for DbExecutor {
     let mut entry = domains::table
         .filter(domains::fqdn.eq(&msg.fqdn))
@@ -174,7 +181,7 @@ impl_handler! (GetGroups(conn) for DbExecutor {
 });
 
 impl_handler! (AddCertificateToDomain(conn, msg) for DbExecutor {
-    diesel::insert_into(certificates::table)
+    diesel::replace_into(certificates::table)
         .values(&msg.cert)
         .execute(conn)?;
 
