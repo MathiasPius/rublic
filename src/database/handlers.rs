@@ -171,10 +171,10 @@ impl Handler<GetGroup> for DbExecutor {
     }
 }
 
-impl Handler<AddUsersToGroup> for DbExecutor {
+impl Handler<SetGroupUsers> for DbExecutor {
     type Result = Result<usize, ServiceError>;
 
-    fn handle(&mut self, msg: AddUsersToGroup, _: &mut Self::Context) -> Self::Result {
+    fn handle(&mut self, msg: SetGroupUsers, _: &mut Self::Context) -> Self::Result {
         use crate::schema::*;
         let conn: &MysqlConnection = &self.0.get().unwrap();
 
@@ -187,6 +187,10 @@ impl Handler<AddUsersToGroup> for DbExecutor {
             }
         }).collect();
 
+        diesel::delete(user_group_mappings::table)
+            .filter(user_group_mappings::group_id.eq(&msg.group_id))
+            .execute(conn)?;
+
         diesel::insert_into(user_group_mappings::table)
             .values(&mappings)
             .execute(conn)?;
@@ -195,10 +199,10 @@ impl Handler<AddUsersToGroup> for DbExecutor {
     }
 }
 
-impl Handler<AddDomainsToGroup> for DbExecutor {
+impl Handler<SetGroupDomains> for DbExecutor {
     type Result = Result<usize, ServiceError>;
 
-    fn handle(&mut self, msg: AddDomainsToGroup, _: &mut Self::Context) -> Self::Result {
+    fn handle(&mut self, msg: SetGroupDomains, _: &mut Self::Context) -> Self::Result {
         use crate::schema::*;
         let conn: &MysqlConnection = &self.0.get().unwrap();
 
@@ -210,6 +214,10 @@ impl Handler<AddDomainsToGroup> for DbExecutor {
                 group_id: group_id.clone()
             }
         }).collect();
+
+        diesel::delete(domain_group_mappings::table)
+            .filter(domain_group_mappings::group_id.eq(&msg.group_id))
+            .execute(conn)?;
 
         diesel::insert_into(domain_group_mappings::table)
             .values(&mappings)

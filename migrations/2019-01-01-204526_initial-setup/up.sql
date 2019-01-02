@@ -20,9 +20,10 @@ CREATE TABLE IF NOT EXISTS rublic.users (
 
 CREATE TABLE IF NOT EXISTS rublic.groups (
 	id CHAR(36) NOT NULL,
-	friendly_name VARCHAR(256) NOT NULL,
+	friendly_name VARCHAR(64) NOT NULL,
     permission VARCHAR(256) NOT NULL,
-	CONSTRAINT groups_PK PRIMARY KEY (id)
+	CONSTRAINT groups_PK PRIMARY KEY (id),
+	CONSTRAINT groups_friendly_name_UN UNIQUE KEY (friendly_name)
 );
 
 CREATE TABLE IF NOT EXISTS rublic.domain_group_mappings (
