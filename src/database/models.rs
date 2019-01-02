@@ -10,7 +10,8 @@ pub struct User {
 #[derive(Identifiable, Queryable, Insertable, Associations)]
 pub struct Domain {
     pub id: String,
-    pub fqdn: String
+    pub fqdn: String,
+    pub hashed_fqdn: String
 }
 
 #[derive(Identifiable, Queryable, Insertable, Associations)]

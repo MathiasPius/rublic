@@ -19,7 +19,7 @@ mod app;
 #[macro_use] mod models;
 mod schema;
 mod errors;
-//mod cryptutil;
+mod cryptoutil;
 mod database;
 mod api;
 

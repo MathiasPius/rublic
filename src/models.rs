@@ -19,7 +19,6 @@ impl Actor for DbExecutor {
 #[macro_export]
 macro_rules! actor_command {
     ($command:ident( $($names:ident : $types:ty),* ) -> $output:ty) => {
-        #[derive(serde_derive::Serialize, serde_derive::Deserialize)]
         pub struct $command {
             $(pub $names : $types),*
         }

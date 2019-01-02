@@ -2,6 +2,7 @@ table! {
     domains (id) {
         id -> Char,
         fqdn -> Varchar,
+        hashed_fqdn -> Char,
     }
 }
 

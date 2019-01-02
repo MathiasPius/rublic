@@ -1,7 +1,7 @@
 // errors.rs
 use serde_derive::{Serialize, Deserialize};
 use actix_web::{error::ResponseError, HttpResponse};
-
+use diesel::result::{Error, DatabaseErrorKind};
 
 #[allow(dead_code)]
 #[derive(Fail, Debug)]
@@ -14,6 +14,9 @@ pub enum ServiceError {
 
     #[fail(display = "NotFound: {}", _0)]
     NotFound(String),
+
+    #[fail(display = "Conflict: {}", _0)]
+    Conflict(String),
 }
 
 #[derive(Serialize, Deserialize)]
@@ -30,6 +33,7 @@ impl ResponseError for ServiceError {
             },
             ServiceError::BadRequest(ref message) => HttpResponse::BadRequest().json(ApiError { error: message.clone() }),
             ServiceError::NotFound(ref message) => HttpResponse::NotFound().json(ApiError { error: message.clone() }),
+            ServiceError::Conflict(ref message) => HttpResponse::Conflict().json(ApiError { error: message.clone() }),
         }
     }
 }
@@ -37,5 +41,19 @@ impl ResponseError for ServiceError {
 impl std::convert::From<actix::MailboxError> for ServiceError {
     fn from(_: actix::MailboxError) -> Self {
         ServiceError::InternalServerError
+    }
+}
+
+impl std::convert::From<diesel::result::Error> for ServiceError {
+    fn from(e: diesel::result::Error) -> Self {
+        match e {
+            Error::DatabaseError(kind, info) => match kind {
+                DatabaseErrorKind::UniqueViolation => {
+                    ServiceError::Conflict(info.message().to_string())
+                },
+                _ => ServiceError::InternalServerError
+            },
+            _ => ServiceError::InternalServerError
+        }
     }
 }

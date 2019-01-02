@@ -8,11 +8,31 @@ use crate::database::messages::*;
 
 pub fn register(router: Scope<AppState>) -> Scope<AppState> {
     router
-        .nested("/{domain_entry_id}", |entry| {
+        .nested("/{fqdn}", |entry| {
             entry.resource("", |r| {
-                r.method(Method::GET).with(get_domain_entry)
+                r.method(Method::GET).with(api_get_domain);
+                r.method(Method::POST).with(api_create_domain);
             })
         })
+}
+
+fn api_create_domain((fqdn, state): (Path<String>, State<AppState>))
+    -> FutureResponse<HttpResponse> {
+
+    into_api_response(state.db
+        .send(CreateDomain { fqdn: fqdn.into_inner() }).flatten()
+        .and_then(|domain| Ok(PluggableDomain {
+            fqdn: domain.fqdn,
+            id: domain.id,
+            groups: None
+        }))
+    )
+}
+
+fn api_get_domain((fqdn, state): (Path<String>, State<AppState>))
+    -> FutureResponse<HttpResponse> {
+  
+    into_api_response(get_domain_by_fqdn(state, fqdn.to_string()))
 }
 
 fn get_domains_groups(state: State<AppState>, id: String) 
@@ -41,10 +61,4 @@ fn get_domain_by_fqdn(state: State<AppState>, fqdn: String)
                     groups: Some(groups)
                 }))
         )
-}
-
-fn get_domain_entry((domain_entry_fqdn, state): (Path<String>, State<AppState>))
-    -> FutureResponse<HttpResponse> {
-  
-    into_api_response(get_domain_by_fqdn(state, domain_entry_fqdn.to_string()))
 }

@@ -1,5 +1,6 @@
 mod models;
 mod domains;
+mod users;
 
 use actix_web::{Scope, FutureResponse, HttpResponse, AsyncResponder};
 use futures::future::Future;
@@ -19,4 +20,5 @@ pub fn into_api_response<T: serde::Serialize>(response: impl Future<Item = T, Er
 pub fn register(scope: Scope<AppState>) -> Scope<AppState> {
     scope
         .nested("/domains", |feature| domains::register(feature))
+        .nested("/users", |feature| users::register(feature))
 }
