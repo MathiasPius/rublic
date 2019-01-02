@@ -1,7 +1,6 @@
 pub mod messages;
 mod handlers;
 
-use regex::Regex;
 use std::fs::{read_dir};
 use std::path::PathBuf;
 use std::collections::HashMap;
@@ -69,7 +68,6 @@ impl ArchiveWatcher {
                 }
             }
         }
-
         Ok(())
     }
 }
@@ -125,13 +123,40 @@ impl Actor for ArchiveWatcher {
 }
 
 
+impl DomainWatcher {
+    pub fn discovered_certificate(&mut self, fullpath: PathBuf) {
+        self.certman.send(CertificateDiscovered {
+            fqdn: self.dir.file_name().unwrap().to_string_lossy().into(),
+            path: fullpath
+        }).wait().ok();
+    }
+
+    pub fn lost_certificate(&mut self, fullpath: PathBuf) {
+        self.certman.send(CertificateDisappeared { path: fullpath }).wait().ok();
+    }
+
+    pub fn parse_certificates(&mut self) -> Result<(), ServiceError> {
+        if let Ok(entries) = read_dir(&self.dir) {
+            for entry in entries {
+                if let Ok(entry) = entry {
+                    if let Ok(filetype) = entry.file_type() {
+                        if !filetype.is_dir() {
+                            self.discovered_certificate(entry.path());
+                        }
+                    }
+                }
+            }
+        }
+        Ok(())
+    }
+}
+
 impl Actor for DomainWatcher {
     type Context = Context<Self>;
 
     fn started(&mut self, ctx: &mut Self::Context) {
-        lazy_static! {
-            static ref CERT_PATTERN: Regex = Regex::new(r"(\w+)([0-9]+)\.(\w+)").unwrap();
-        }
+
+        self.parse_certificates().unwrap();
 
         let mut watcher = Inotify::init()
             .expect("DW: failed to initialize Inotify instance");
@@ -156,17 +181,15 @@ impl Actor for DomainWatcher {
                         let mut path = self.dir.clone();
                         path.push(name);
 
-                        self.certman.send(CertificateDiscovered {
-                                fqdn: self.dir.file_name().unwrap().to_string_lossy().into(),
-                                path: path
-                            }).wait().ok();
+                        self.discovered_certificate(path);
 
                     } else if (EventMask::DELETE | EventMask::MOVED_FROM).intersects(event.mask) {
                         println!("DW: domain {:?} deleted: {:?} ({:?})", self.dir.file_name().unwrap(), name, event.mask);
 
                         let mut path = self.dir.clone();
                         path.push(name);
-                        self.certman.send(CertificateDisappeared { path }).wait().ok();
+                        
+                        self.lost_certificate(path);
                     }
                 }
                 
