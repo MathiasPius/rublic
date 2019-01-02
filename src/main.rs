@@ -24,6 +24,7 @@ mod errors;
 mod cryptoutil;
 mod database;
 mod watcher;
+mod certman;
 mod api;
 
 use actix::prelude::*;
@@ -31,6 +32,7 @@ use actix_web::server;
 use diesel::{r2d2::ConnectionManager, MysqlConnection};
 use dotenv::dotenv;
 use std::env;
+use crate::certman::CertificateManager;
 use crate::database::DbExecutor;
 use crate::watcher::ArchiveWatcher;
 
@@ -56,8 +58,13 @@ fn main() {
     let database: Addr<DbExecutor>  = SyncArbiter::start(4, move || DbExecutor(pool.clone()));
 
     let dbref = database.clone();
-    let _watcher: Addr<ArchiveWatcher> = Arbiter::start(move |_| {
-        ArchiveWatcher::new(dbref.clone(), letsencrypt_archive)
+    let certman = Arbiter::start(move |_| {
+        CertificateManager { db: dbref.clone() }
+    });
+
+    let dbref = database.clone();
+    Arbiter::start(move |_| {
+        ArchiveWatcher::new(dbref.clone(), certman.clone(), letsencrypt_archive)
     });
 
     server::new(move || app::create_app(database.clone()))

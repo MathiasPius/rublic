@@ -9,28 +9,32 @@ use futures::Future;
 use actix::{Actor, Context, Addr, Arbiter, ActorContext};
 use crate::errors::ServiceError;
 use crate::database::DbExecutor;
-use crate::database::models::Certificate;
 use crate::database::messages::{CreateDomain, DeleteDomain};
+use crate::certman::messages::CertificateDiscovered;
+use crate::certman::CertificateManager;
 use crate::inotify::{Inotify, EventMask, WatchMask};
 
 // Listens for filesystem events
 pub struct ArchiveWatcher {
+    pub db: Addr<DbExecutor>,
+    pub certman: Addr<CertificateManager>,
     pub children: HashMap<PathBuf, Addr<DomainWatcher>>,
     pub dir: PathBuf,
-    pub db: Addr<DbExecutor>
 }
 
 pub struct DomainWatcher {
     pub db: Addr<DbExecutor>,
-    pub dir: PathBuf
+    pub certman: Addr<CertificateManager>,
+    pub dir: PathBuf,
 }
 
 impl ArchiveWatcher {
-    pub fn new(db: Addr<DbExecutor>, dir: PathBuf) -> Self {
+    pub fn new(db: Addr<DbExecutor>, certman: Addr<CertificateManager>, dir: PathBuf) -> Self {
         ArchiveWatcher {
             children: HashMap::new(),
             dir: dir,
-            db: db.clone()
+            db: db.clone(),
+            certman: certman.clone()
         }
     }
 
@@ -38,6 +42,7 @@ impl ArchiveWatcher {
         // Spin up a new DomainWatcher for the directory
         let watcher = DomainWatcher {
             db: self.db.clone(),
+            certman: self.certman.clone(),
             dir: path.clone()
         };
 
@@ -148,34 +153,13 @@ impl Actor for DomainWatcher {
                     if (EventMask::CLOSE_WRITE | EventMask::MOVED_TO).intersects(event.mask) {
                         println!("DW: domain {:?} modified: {:?} ({:?})", self.dir.file_name().unwrap(), name, event.mask);
 
-                        if let Some(names) = CERT_PATTERN.captures(&name.to_string_lossy()) {
-                            if names.len() != 4 {
-                                println!("DW: certificate name {:?} failed pattern matching", name);
-                                continue;
-                            }
-
-                            let (certname, id, fileext) = (
-                                names.get(1).unwrap().as_str(), 
-                                names.get(2).unwrap().as_str(), 
-                                names.get(3).unwrap().as_str()
-                            );
-
-                            let mut path = self.dir.clone();
+                        let mut path = self.dir.clone();
                             path.push(name);
 
-                            let certificate = Certificate {
-                                id: id.parse::<i32>().unwrap(),
-                                domain_id: "helloe".into(),
-                                friendly_name: format!("{}.{}", certname, fileext),
-                                path: path.to_string_lossy().into(),
-                                not_before: chrono::NaiveDate::from_ymd(2018, 6, 2).and_hms(13, 37, 0),
-                                not_after: chrono::NaiveDate::from_ymd(2019, 6, 2).and_hms(13, 37, 0)
-                            };
-                            
-                            println!("DW: found new certificate: {:?}", certificate);
-                        }
-
-
+                        self.certman.send(CertificateDiscovered {
+                                fqdn: self.dir.file_name().unwrap().to_string_lossy().into(),
+                                path: path
+                            }).wait().ok();
                     } else if (EventMask::DELETE | EventMask::MOVED_FROM).intersects(event.mask) {
                         println!("DW: domain {:?} deleted: {:?} ({:?})", self.dir.file_name().unwrap(), name, event.mask);
 
