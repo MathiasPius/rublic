@@ -12,8 +12,10 @@ extern crate r2d2;
 extern crate uuid;
 extern crate rand;
 extern crate inotify;
+extern crate regex;
 #[macro_use] extern crate diesel;
 #[macro_use] extern crate failure;
+#[macro_use] extern crate lazy_static;
 
 mod app;
 #[macro_use] mod models;

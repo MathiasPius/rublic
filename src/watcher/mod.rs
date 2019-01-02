@@ -1,13 +1,15 @@
 pub mod messages;
 mod handlers;
 
+use regex::Regex;
 use std::fs::{read_dir};
 use std::path::PathBuf;
-use futures::Future;
 use std::collections::HashMap;
+use futures::Future;
 use actix::{Actor, Context, Addr, Arbiter, ActorContext};
 use crate::errors::ServiceError;
 use crate::database::DbExecutor;
+use crate::database::models::Certificate;
 use crate::database::messages::{CreateDomain, DeleteDomain};
 use crate::inotify::{Inotify, EventMask, WatchMask};
 
@@ -122,11 +124,15 @@ impl Actor for DomainWatcher {
     type Context = Context<Self>;
 
     fn started(&mut self, ctx: &mut Self::Context) {
+        lazy_static! {
+            static ref CERT_PATTERN: Regex = Regex::new(r"(\w+)([0-9]+)\.(\w+)").unwrap();
+        }
+
         let mut watcher = Inotify::init()
             .expect("DW: failed to initialize Inotify instance");
 
         watcher
-            .add_watch(&self.dir, WatchMask::DELETE_SELF | WatchMask::MOVE_SELF | WatchMask::CREATE | WatchMask::DELETE | WatchMask::MOVED_FROM | WatchMask::MOVED_TO | WatchMask::CLOSE_WRITE | WatchMask::MODIFY)
+            .add_watch(&self.dir, WatchMask::DELETE_SELF | WatchMask::MOVE_SELF | WatchMask::CREATE | WatchMask::DELETE | WatchMask::MOVED_FROM | WatchMask::MOVED_TO | WatchMask::CLOSE_WRITE)
             .expect("DW: failed to start watching directory");
 
         println!("DW: for {} started!", &self.dir.display());
@@ -138,11 +144,47 @@ impl Actor for DomainWatcher {
                 .expect("Failed to read inotify events");
 
             for event in events {
-                if (EventMask::CREATE | EventMask::MODIFY | EventMask::CLOSE_WRITE | EventMask::MOVED_TO).intersects(event.mask) {
-                    println!("DW: certificate {:?} modified: {:?}", self.dir.file_name().unwrap(), event.name);
-                } else if (EventMask::DELETE | EventMask::MOVED_FROM).intersects(event.mask) {
-                    println!("DW: certificate {:?} deleted: {:?}", self.dir.file_name().unwrap(), event.name);
-                } else if (EventMask::DELETE_SELF | EventMask::MOVE_SELF).intersects(event.mask) {
+                if let Some(name) = event.name {
+                    if (EventMask::CLOSE_WRITE | EventMask::MOVED_TO).intersects(event.mask) {
+                        println!("DW: domain {:?} modified: {:?} ({:?})", self.dir.file_name().unwrap(), name, event.mask);
+
+                        if let Some(names) = CERT_PATTERN.captures(&name.to_string_lossy()) {
+                            if names.len() != 4 {
+                                println!("DW: certificate name {:?} failed pattern matching", name);
+                                continue;
+                            }
+
+                            let (certname, id, fileext) = (
+                                names.get(1).unwrap().as_str(), 
+                                names.get(2).unwrap().as_str(), 
+                                names.get(3).unwrap().as_str()
+                            );
+
+                            let mut path = self.dir.clone();
+                            path.push(name);
+
+                            let certificate = Certificate {
+                                id: id.parse::<i32>().unwrap(),
+                                domain_id: "helloe".into(),
+                                friendly_name: format!("{}.{}", certname, fileext),
+                                path: path.to_string_lossy().into(),
+                                not_before: chrono::NaiveDate::from_ymd(2018, 6, 2).and_hms(13, 37, 0),
+                                not_after: chrono::NaiveDate::from_ymd(2019, 6, 2).and_hms(13, 37, 0)
+                            };
+                            
+                            println!("DW: found new certificate: {:?}", certificate);
+                        }
+
+
+                    } else if (EventMask::DELETE | EventMask::MOVED_FROM).intersects(event.mask) {
+                        println!("DW: domain {:?} deleted: {:?} ({:?})", self.dir.file_name().unwrap(), name, event.mask);
+
+
+
+                    }
+                }
+                
+                if (EventMask::DELETE_SELF | EventMask::MOVE_SELF).intersects(event.mask) {
                     println!("DW: domain {:?} deleted! committing seppuku", self.dir.file_name().unwrap());
 
                     let domain = DeleteDomain { 

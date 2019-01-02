@@ -41,7 +41,7 @@ pub struct UserGroupMapping {
 }
 
 
-#[derive(Identifiable, Queryable, Insertable, Associations)]
+#[derive(Identifiable, Queryable, Insertable, Associations, Debug)]
 pub struct Certificate {
     pub id: i32,
     pub domain_id: String,
