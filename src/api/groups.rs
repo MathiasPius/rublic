@@ -77,23 +77,6 @@ fn get_group(db: Addr<DbExecutor>, id: String)
                 users: Some(users)
             })
         })
-
-    /*
-    db.clone()
-        .send(GetGroup { id }).flatten()
-        .and_then(move |group| {
-            get_group_users(db.clone(), group.id.clone())
-                .join(get_group_domains(db.clone(), group.id.clone()))
-                .and_then(|(users, domains)| {
-                    Ok(PluggableGroup {
-                        id: group.id,
-                        friendly_name: group.friendly_name,
-                        domains: Some(domains),
-                        users: Some(users)
-                    })
-                })
-        })
-    */
 }
 
 fn get_group_users(db: Addr<DbExecutor>, id: String) 
