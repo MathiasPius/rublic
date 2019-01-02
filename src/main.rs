@@ -30,7 +30,7 @@ use diesel::{r2d2::ConnectionManager, MysqlConnection};
 use dotenv::dotenv;
 use std::env;
 use crate::database::DbExecutor;
-use crate::watcher::FilesystemWatcher;
+use crate::watcher::ArchiveWatcher;
 
 fn main() {
     std::env::set_var("RUST_LOG", "actix_web=info");
@@ -38,6 +38,8 @@ fn main() {
 
     dotenv().ok();
     let database_url = env::var("DATABASE_URL").expect("DATABASE_URL must be set");
+    let letsencrypt_archive = env::var("LETSENCRYPT_ARCHIVE").unwrap_or("/etc/letsencrypt/archive".into()).into();
+
     let sys = actix::System::new("Rublic");
 
     // create db connection pool
@@ -49,7 +51,9 @@ fn main() {
     let database: Addr<DbExecutor>  = SyncArbiter::start(4, move || DbExecutor(pool.clone()));
 
     let dbref = database.clone();
-    let _watcher: Addr<FilesystemWatcher> = Arbiter::start(move |_| FilesystemWatcher::new(dbref.clone(), "/home/mathias/.letsencrypt".into()));
+    let _watcher: Addr<ArchiveWatcher> = Arbiter::start(move |_| {
+        ArchiveWatcher::new(dbref.clone(), letsencrypt_archive)
+    });
 
     server::new(move || app::create_app(database.clone()))
         .bind("127.0.0.1:3000")

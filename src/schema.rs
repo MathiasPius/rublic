@@ -1,4 +1,13 @@
 table! {
+    certificates (domain_id, id) {
+        id -> Integer,
+        domain_id -> Char,
+        not_before -> Datetime,
+        not_after -> Datetime,
+    }
+}
+
+table! {
     domains (id) {
         id -> Char,
         fqdn -> Varchar,
@@ -36,12 +45,14 @@ table! {
     }
 }
 
+joinable!(certificates -> domains (domain_id));
 joinable!(domain_group_mappings -> domains (domain_id));
 joinable!(domain_group_mappings -> groups (group_id));
 joinable!(user_group_mappings -> groups (group_id));
 joinable!(user_group_mappings -> users (user_id));
 
 allow_tables_to_appear_in_same_query!(
+    certificates,
     domains,
     domain_group_mappings,
     groups,

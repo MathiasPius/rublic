@@ -16,3 +16,6 @@ actor_command! (SetGroupDomains(domain_ids: Vec<String>, group_id: String) -> us
 actor_command! (GetUsersByGroup(id: String) -> Vec<User>);
 actor_command! (GetDomainsByGroup(id: String) -> Vec<Domain>);
 actor_command! (GetGroups() -> Vec<Group>);
+
+actor_command! (AddCertificateToDomain(cert: Certificate) -> Certificate);
+actor_command! (GetCertificatesByDomain(domain_id: String) -> Vec<Certificate>);

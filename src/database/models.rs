@@ -1,4 +1,5 @@
 use crate::schema::*;
+use crate::chrono::{NaiveDateTime};
 
 #[derive(Identifiable, Queryable, Insertable, Associations)]
 pub struct User {
@@ -37,4 +38,13 @@ pub struct DomainGroupMapping {
 pub struct UserGroupMapping {
     pub user_id: String,
     pub group_id: String
+}
+
+
+#[derive(Identifiable, Queryable, Insertable, Associations)]
+pub struct Certificate {
+    pub id: i32,
+    pub domain_id: String,
+    pub not_before: NaiveDateTime,
+    pub not_after: NaiveDateTime
 }

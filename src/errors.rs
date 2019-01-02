@@ -57,3 +57,9 @@ impl std::convert::From<diesel::result::Error> for ServiceError {
         }
     }
 }
+
+impl std::convert::From<std::io::Error> for ServiceError {
+    fn from(_e: std::io::Error) -> Self {
+        ServiceError::InternalServerError
+    }
+}
