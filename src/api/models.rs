@@ -26,7 +26,10 @@ pub struct PluggableGroup {
     pub friendly_name: String,
 
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub domains: Option<Vec<PluggableDomain>>
+    pub domains: Option<Vec<PluggableDomain>>,
+    
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub users: Option<Vec<PluggableUser>>
 }
 
 #[derive(Serialize)]
@@ -36,5 +39,8 @@ pub struct PluggableUser {
 
     // This is only ever populated when a new user is created
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub secret_key: Option<String>
+    pub secret_key: Option<String>,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub groups: Option<Vec<PluggableGroup>>
 }

@@ -55,13 +55,12 @@ impl Handler<GetGroupsByDomain> for DbExecutor {
         use crate::schema::*;
         let conn: &MysqlConnection = &self.0.get().unwrap();
 
-        let groups = domain_group_mappings::table
+        domain_group_mappings::table
             .filter(domain_group_mappings::domain_id.eq(&msg.id))
             .inner_join(groups::table)
             .select((groups::id, groups::friendly_name, groups::permission))
-            .load::<Group>(conn)?;
-
-        Ok(groups)
+            .load::<Group>(conn)
+            .map_err(|e| e.into())
     }
 }
 
@@ -72,13 +71,12 @@ impl Handler<GetGroupsByUser> for DbExecutor {
         use crate::schema::*;
         let conn: &MysqlConnection = &self.0.get().unwrap();
 
-        let groups = user_group_mappings::table
+        user_group_mappings::table
             .filter(user_group_mappings::user_id.eq(&msg.id))
             .inner_join(groups::table)
             .select((groups::id, groups::friendly_name, groups::permission))
-            .load::<Group>(conn)?;
-
-        Ok(groups)
+            .load::<Group>(conn)
+            .map_err(|e| e.into())
     }
 }
 
@@ -170,5 +168,85 @@ impl Handler<GetGroup> for DbExecutor {
             .load::<Group>(conn)?;
 
         group.pop().ok_or(ServiceError::NotFound("group with that id not found".to_string()))
+    }
+}
+
+impl Handler<AddUsersToGroup> for DbExecutor {
+    type Result = Result<usize, ServiceError>;
+
+    fn handle(&mut self, msg: AddUsersToGroup, _: &mut Self::Context) -> Self::Result {
+        use crate::schema::*;
+        let conn: &MysqlConnection = &self.0.get().unwrap();
+
+        let group_id = msg.group_id.clone();
+
+        let mappings: Vec<UserGroupMapping> = msg.user_ids.into_iter().map(|id| {
+            UserGroupMapping {
+                user_id: id.clone(),
+                group_id: group_id.clone()
+            }
+        }).collect();
+
+        diesel::insert_into(user_group_mappings::table)
+            .values(&mappings)
+            .execute(conn)?;
+
+        Ok(mappings.len())
+    }
+}
+
+impl Handler<AddDomainsToGroup> for DbExecutor {
+    type Result = Result<usize, ServiceError>;
+
+    fn handle(&mut self, msg: AddDomainsToGroup, _: &mut Self::Context) -> Self::Result {
+        use crate::schema::*;
+        let conn: &MysqlConnection = &self.0.get().unwrap();
+
+        let group_id = msg.group_id.clone();
+
+        let mappings: Vec<DomainGroupMapping> = msg.domain_ids.into_iter().map(|id| {
+            DomainGroupMapping {
+                domain_id: id.clone(),
+                group_id: group_id.clone()
+            }
+        }).collect();
+
+        diesel::insert_into(domain_group_mappings::table)
+            .values(&mappings)
+            .execute(conn)?;
+
+        Ok(mappings.len())
+    }
+}
+
+impl Handler<GetUsersByGroup> for DbExecutor {
+    type Result = Result<Vec<User>, ServiceError>;
+
+    fn handle(&mut self, msg: GetUsersByGroup, _: &mut Self::Context) -> Self::Result {
+        use crate::schema::*;
+        let conn: &MysqlConnection = &self.0.get().unwrap();
+
+        user_group_mappings::table
+            .filter(user_group_mappings::group_id.eq(&msg.id))
+            .inner_join(users::table)
+            .select((users::id, users::friendly_name, users::hashed_key))
+            .load::<User>(conn)
+            .map_err(|e| e.into())
+    }
+}
+
+impl Handler<GetDomainsByGroup> for DbExecutor {
+    type Result = Result<Vec<Domain>, ServiceError>;
+
+    fn handle(&mut self, msg: GetDomainsByGroup, _: &mut Self::Context) -> Self::Result {
+        use crate::schema::*;
+        let conn: &MysqlConnection = &self.0.get().unwrap();
+
+        domain_group_mappings::table
+            .filter(domain_group_mappings::group_id.eq(&msg.id))
+            .inner_join(domains::table)
+            .select((domains::id, domains::fqdn, domains::hashed_fqdn))
+            .load::<Domain>(conn)
+            .map_err(|e| e.into())
     }
 }

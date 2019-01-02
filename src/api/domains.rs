@@ -43,7 +43,8 @@ fn get_domains_groups(state: State<AppState>, id: String)
             Ok(groups.into_iter().map(|group| PluggableGroup {
                 id: group.id,
                 friendly_name: group.friendly_name,
-                domains: None
+                domains: None,
+                users: None
             }).collect())
         )
 }

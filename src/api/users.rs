@@ -1,6 +1,8 @@
+use actix::Addr;
 use actix_web::{State, http::Method, Scope, HttpResponse, FutureResponse, Path, Json};
 use futures::future::Future;
 use crate::app::AppState;
+use crate::models::DbExecutor;
 use crate::errors::ServiceError;
 use crate::database::messages::*;
 use crate::cryptoutil::CryptoUtil;
@@ -31,7 +33,8 @@ fn api_create_user((new_user, state): (Json<NewUserRequest>, State<AppState>))
         .and_then(|user| Ok(PluggableUser {
             id: user.id,
             friendly_name: user.friendly_name,
-            secret_key: Some(key)
+            secret_key: Some(key),
+            groups: None
         }))
     )
 }
@@ -39,17 +42,37 @@ fn api_create_user((new_user, state): (Json<NewUserRequest>, State<AppState>))
 fn api_get_user((user_id, state): (Path<String>, State<AppState>))
     -> FutureResponse<HttpResponse> {
   
-    into_api_response(get_user(state, user_id.to_string()))
+    into_api_response(get_user(state.db.clone(), user_id.to_string()))
 }
 
-fn get_user(state: State<AppState>, id: String)
+fn get_user(db: Addr<DbExecutor>, id: String)
     -> impl Future<Item = PluggableUser, Error = ServiceError> {
 
-    state.db
+    db.clone()
         .send(GetUser { id }).flatten()
-        .and_then(|user| Ok(PluggableUser {
-            id: user.id,
-            friendly_name: user.friendly_name,
-            secret_key: None
-        }))
+        .and_then(move |user| {
+            get_user_groups(db.clone(), user.id.clone())
+                .and_then(|groups| {
+                    Ok(PluggableUser {
+                        id: user.id,
+                        friendly_name: user.friendly_name,
+                        secret_key: None,
+                        groups: Some(groups)
+                    })
+                })
+        })
+}
+
+fn get_user_groups(db: Addr<DbExecutor>, id: String) 
+    -> impl Future<Item = Vec<PluggableGroup>, Error = ServiceError> {
+    db
+        .send(GetGroupsByUser { id }).flatten()
+        .and_then(|groups| 
+            Ok(groups.into_iter().map(|group| PluggableGroup {
+                id: group.id,
+                friendly_name: group.friendly_name,
+                users: None,
+                domains: None
+            }).collect())
+        )
 }
