@@ -1,6 +1,6 @@
 use actix::Addr;
 use actix_web::{State, http::Method, Scope, HttpResponse, FutureResponse, Path, Json};
-use futures::future::Future;
+use futures::future::{join_all, Future};
 use crate::app::AppState;
 use crate::errors::ServiceError;
 use crate::database::messages::*;
@@ -29,7 +29,21 @@ pub fn register(router: Scope<AppState>) -> Scope<AppState> {
         })
         .resource("", |r| {
             r.method(Method::POST).with(api_create_group);
+            r.method(Method::GET).with(api_get_groups);
         })
+}
+
+fn api_get_groups(state: State<AppState>) 
+    -> FutureResponse<HttpResponse> {
+    into_api_response(state.db.clone()
+        .send(GetGroups {}).flatten()
+        .and_then(move |groups|
+            join_all(groups.into_iter().map(move |group|
+                get_group(state.db.clone(), group.id)
+            ))
+            .and_then(|groups| Ok(groups))
+        )
+    )
 }
 
 fn api_get_group_users((group_id, state): (Path<String>, State<AppState>))

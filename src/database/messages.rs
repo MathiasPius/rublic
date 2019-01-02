@@ -30,3 +30,4 @@ actor_command! (AddUsersToGroup(user_ids: Vec<String>, group_id: String) -> usiz
 actor_command! (AddDomainsToGroup(domain_ids: Vec<String>, group_id: String) -> usize);
 actor_command! (GetUsersByGroup(id: String) -> Vec<User>);
 actor_command! (GetDomainsByGroup(id: String) -> Vec<Domain>);
+actor_command! (GetGroups() -> Vec<Group>);

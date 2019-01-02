@@ -250,3 +250,16 @@ impl Handler<GetDomainsByGroup> for DbExecutor {
             .map_err(|e| e.into())
     }
 }
+
+impl Handler<GetGroups> for DbExecutor {
+    type Result = Result<Vec<Group>, ServiceError>;
+
+    fn handle(&mut self, _: GetGroups, _: &mut Self::Context) -> Self::Result {
+        use crate::schema::*;
+        let conn: &MysqlConnection = &self.0.get().unwrap();
+
+        groups::table
+            .load::<Group>(conn)
+            .map_err(|e| e.into())
+    }
+}
