@@ -62,6 +62,23 @@ fn api_get_group((group_id, state): (Path<String>, State<AppState>))
 fn get_group(db: Addr<DbExecutor>, id: String)
     -> impl Future<Item = PluggableGroup, Error = ServiceError> {
 
+
+    db.clone()
+        .send(GetGroup { id: id.clone() }).flatten()
+        .join3(
+            get_group_users(db.clone(), id.clone()),
+            get_group_domains(db.clone(), id.clone())
+        )
+        .and_then(|(group, users, domains)| {
+            Ok(PluggableGroup {
+                id: group.id,
+                friendly_name: group.friendly_name,
+                domains: Some(domains),
+                users: Some(users)
+            })
+        })
+
+    /*
     db.clone()
         .send(GetGroup { id }).flatten()
         .and_then(move |group| {
@@ -76,6 +93,7 @@ fn get_group(db: Addr<DbExecutor>, id: String)
                     })
                 })
         })
+    */
 }
 
 fn get_group_users(db: Addr<DbExecutor>, id: String) 
