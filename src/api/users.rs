@@ -27,7 +27,7 @@ fn api_create_user((new_user, state): (Json<NewUserRequest>, State<AppState>))
     let hashed_key = CryptoUtil::hash_key(&key);
 
     into_api_response(state.db
-        .send(CreateUser { friendly_name: new_user.into_inner().friendly_name, hashed_key }).flatten()
+        .send(CreateUser { friendly_name: new_user.friendly_name.clone(), hashed_key }).flatten()
         .and_then(|user| Ok(PluggableUser {
             id: user.id,
             friendly_name: user.friendly_name,
@@ -46,7 +46,7 @@ fn get_user(state: State<AppState>, id: String)
     -> impl Future<Item = PluggableUser, Error = ServiceError> {
 
     state.db
-        .send(GetUserById { id }).flatten()
+        .send(GetUser { id }).flatten()
         .and_then(|user| Ok(PluggableUser {
             id: user.id,
             friendly_name: user.friendly_name,

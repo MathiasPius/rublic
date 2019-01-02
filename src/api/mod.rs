@@ -1,6 +1,7 @@
 mod models;
 mod domains;
 mod users;
+mod groups;
 
 use actix_web::{Scope, FutureResponse, HttpResponse, AsyncResponder};
 use futures::future::Future;
@@ -21,4 +22,5 @@ pub fn register(scope: Scope<AppState>) -> Scope<AppState> {
     scope
         .nested("/domains", |feature| domains::register(feature))
         .nested("/users", |feature| users::register(feature))
+        .nested("/groups", |feature| groups::register(feature))
 }

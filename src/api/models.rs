@@ -5,6 +5,11 @@ pub struct NewUserRequest {
     pub friendly_name: String
 }
 
+#[derive(Deserialize)]
+pub struct NewGroupRequest {
+    pub friendly_name: String
+}
+
 
 #[derive(Serialize)]
 pub struct PluggableDomain {

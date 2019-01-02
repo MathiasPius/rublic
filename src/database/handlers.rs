@@ -65,6 +65,24 @@ impl Handler<GetGroupsByDomain> for DbExecutor {
     }
 }
 
+impl Handler<GetGroupsByUser> for DbExecutor {
+    type Result = Result<Vec<Group>, ServiceError>;
+
+    fn handle(&mut self, msg: GetGroupsByUser, _: &mut Self::Context) -> Self::Result {
+        use crate::schema::*;
+        let conn: &MysqlConnection = &self.0.get().unwrap();
+
+        let groups = user_group_mappings::table
+            .filter(user_group_mappings::user_id.eq(&msg.id))
+            .inner_join(groups::table)
+            .select((groups::id, groups::friendly_name, groups::permission))
+            .load::<Group>(conn)?;
+
+        Ok(groups)
+    }
+}
+
+
 impl Handler<CreateUser> for DbExecutor {
     type Result = Result<User, ServiceError>;
 
@@ -102,10 +120,10 @@ impl Handler<GetUserByName> for DbExecutor {
     }
 }
 
-impl Handler<GetUserById> for DbExecutor {
+impl Handler<GetUser> for DbExecutor {
     type Result = Result<User, ServiceError>;
 
-    fn handle(&mut self, msg: GetUserById, _: &mut Self::Context) -> Self::Result {
+    fn handle(&mut self, msg: GetUser, _: &mut Self::Context) -> Self::Result {
         use crate::schema::*;
         let conn: &MysqlConnection = &self.0.get().unwrap();
 
@@ -115,5 +133,42 @@ impl Handler<GetUserById> for DbExecutor {
             .load::<User>(conn)?;
 
         user.pop().ok_or(ServiceError::NotFound("user with that id not found".to_string()))
+    }
+}
+
+impl Handler<CreateGroup> for DbExecutor {
+    type Result = Result<Group, ServiceError>;
+
+    fn handle(&mut self, msg: CreateGroup, _: &mut Self::Context) -> Self::Result {
+        use crate::schema::*;
+        let conn: &MysqlConnection = &self.0.get().unwrap();
+
+        let new_group = Group {
+            id: CryptoUtil::generate_uuid(),
+            friendly_name: msg.friendly_name,
+            permission: "read".into()
+        };
+
+        diesel::insert_into(groups::table)
+            .values(&new_group)
+            .execute(conn)?;
+
+        Ok(new_group)
+    }
+}
+
+impl Handler<GetGroup> for DbExecutor {
+    type Result = Result<Group, ServiceError>;
+
+    fn handle(&mut self, msg: GetGroup, _: &mut Self::Context) -> Self::Result {
+        use crate::schema::*;
+        let conn: &MysqlConnection = &self.0.get().unwrap();
+
+        let mut group = groups::table
+            .filter(groups::id.eq(&msg.id))
+            .limit(1)
+            .load::<Group>(conn)?;
+
+        group.pop().ok_or(ServiceError::NotFound("group with that id not found".to_string()))
     }
 }
