@@ -17,10 +17,14 @@ pub fn register(router: Scope<AppState>) -> Scope<AppState> {
             .nested("/users", |users| {
                 users.resource("", |r| {
                     r.method(Method::POST).with(api_add_group_users);
+                    r.method(Method::GET).with(api_get_group_users);
                 })
             })
             .nested("/domains", |domains| {
-                domains
+                domains.resource("", |r| {
+                    r.method(Method::POST).with(api_add_group_domains);
+                    r.method(Method::GET).with(api_get_group_domains);
+                })
             })
         })
         .resource("", |r| {
@@ -28,11 +32,32 @@ pub fn register(router: Scope<AppState>) -> Scope<AppState> {
         })
 }
 
+fn api_get_group_users((group_id, state): (Path<String>, State<AppState>))
+    -> FutureResponse<HttpResponse> {
+    into_api_response(get_group_users(state.db.clone(), group_id.into_inner()))
+}
+
+fn api_get_group_domains((group_id, state): (Path<String>, State<AppState>))
+    -> FutureResponse<HttpResponse> {
+    into_api_response(get_group_domains(state.db.clone(), group_id.into_inner()))
+}
+
 fn api_add_group_users((group_id, users, state): (Path<String>, Json<Vec<String>>, State<AppState>))
     -> FutureResponse<HttpResponse> {
 
     into_api_response(state.db.clone()
         .send(AddUsersToGroup { user_ids: users.into_inner(), group_id: group_id.clone() }).flatten()
+        .and_then(move |_| {
+            get_group(state.db.clone(), group_id.into_inner())
+        })
+    )
+}
+
+fn api_add_group_domains((group_id, domains, state): (Path<String>, Json<Vec<String>>, State<AppState>))
+    -> FutureResponse<HttpResponse> {
+
+    into_api_response(state.db.clone()
+        .send(AddDomainsToGroup { domain_ids: domains.into_inner(), group_id: group_id.clone() }).flatten()
         .and_then(move |_| {
             get_group(state.db.clone(), group_id.into_inner())
         })
