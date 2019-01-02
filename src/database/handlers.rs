@@ -1,6 +1,6 @@
 use actix::Handler;
 use diesel::{MysqlConnection, prelude::*};
-use crate::models::DbExecutor;
+use crate::database::DbExecutor;
 use crate::errors::ServiceError;
 use crate::cryptoutil::CryptoUtil;
 use super::models::*;

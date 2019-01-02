@@ -1,6 +1,6 @@
 use actix::prelude::*;
 use actix_web::{middleware, App};
-use crate::models::DbExecutor;
+use crate::database::DbExecutor;
 //use crate::credentials::routes::RublicCredentialsRouter;
 //use crate::domains::routes::RublicDomainsRouter;
 

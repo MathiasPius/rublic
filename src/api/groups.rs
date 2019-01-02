@@ -4,7 +4,7 @@ use futures::future::{join_all, Future};
 use crate::app::AppState;
 use crate::errors::ServiceError;
 use crate::database::messages::*;
-use crate::models::DbExecutor;
+use crate::database::DbExecutor;
 use super::into_api_response;
 use super::models::*;
 

@@ -2,7 +2,7 @@ use actix::Addr;
 use actix_web::{State, http::Method, Scope, HttpResponse, FutureResponse, Path, Json};
 use futures::future::Future;
 use crate::app::AppState;
-use crate::models::DbExecutor;
+use crate::database::DbExecutor;
 use crate::errors::ServiceError;
 use crate::database::messages::*;
 use crate::cryptoutil::CryptoUtil;

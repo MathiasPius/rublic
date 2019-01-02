@@ -11,7 +11,7 @@ extern crate futures;
 extern crate r2d2;
 extern crate uuid;
 extern crate rand;
-extern crate itertools;
+extern crate inotify;
 #[macro_use] extern crate diesel;
 #[macro_use] extern crate failure;
 
@@ -21,6 +21,7 @@ mod schema;
 mod errors;
 mod cryptoutil;
 mod database;
+mod watcher;
 mod api;
 
 use actix::prelude::*;
@@ -28,7 +29,8 @@ use actix_web::server;
 use diesel::{r2d2::ConnectionManager, MysqlConnection};
 use dotenv::dotenv;
 use std::env;
-use crate::models::DbExecutor;
+use crate::database::DbExecutor;
+use crate::watcher::FilesystemWatcher;
 
 fn main() {
     std::env::set_var("RUST_LOG", "actix_web=info");
@@ -44,9 +46,12 @@ fn main() {
         .build(manager)
         .expect("Failed to create pool.");
 
-    let address :Addr<DbExecutor>  = SyncArbiter::start(4, move || DbExecutor(pool.clone()));
+    let database: Addr<DbExecutor>  = SyncArbiter::start(4, move || DbExecutor(pool.clone()));
 
-    server::new(move || app::create_app(address.clone()))
+    let dbref = database.clone();
+    let _watcher: Addr<FilesystemWatcher> = Arbiter::start(move |_| FilesystemWatcher::new(dbref.clone(), "/home/mathias/.letsencrypt".into()));
+
+    server::new(move || app::create_app(database.clone()))
         .bind("127.0.0.1:3000")
         .expect("Can not bind to '127.0.0.1:3000'")
         .start();
