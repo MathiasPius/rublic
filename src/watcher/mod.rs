@@ -10,7 +10,7 @@ use actix::{Actor, Context, Addr, Arbiter, ActorContext};
 use crate::errors::ServiceError;
 use crate::database::DbExecutor;
 use crate::database::messages::{CreateDomain, DeleteDomain};
-use crate::certman::messages::CertificateDiscovered;
+use crate::certman::messages::{CertificateDiscovered, CertificateDisappeared};
 use crate::certman::CertificateManager;
 use crate::inotify::{Inotify, EventMask, WatchMask};
 
@@ -154,29 +154,28 @@ impl Actor for DomainWatcher {
                         println!("DW: domain {:?} modified: {:?} ({:?})", self.dir.file_name().unwrap(), name, event.mask);
 
                         let mut path = self.dir.clone();
-                            path.push(name);
+                        path.push(name);
 
                         self.certman.send(CertificateDiscovered {
                                 fqdn: self.dir.file_name().unwrap().to_string_lossy().into(),
                                 path: path
                             }).wait().ok();
+
                     } else if (EventMask::DELETE | EventMask::MOVED_FROM).intersects(event.mask) {
                         println!("DW: domain {:?} deleted: {:?} ({:?})", self.dir.file_name().unwrap(), name, event.mask);
 
-
-
+                        let mut path = self.dir.clone();
+                        path.push(name);
+                        self.certman.send(CertificateDisappeared { path }).wait().ok();
                     }
                 }
                 
                 if (EventMask::DELETE_SELF | EventMask::MOVE_SELF).intersects(event.mask) {
                     println!("DW: domain {:?} deleted! committing seppuku", self.dir.file_name().unwrap());
 
-                    let domain = DeleteDomain { 
+                    self.db.send(DeleteDomain { 
                         fqdn: self.dir.file_name().unwrap().to_string_lossy().into() 
-                    };
-
-                    self.db.send(domain)
-                        .flatten().wait().unwrap();
+                    }).flatten().wait().unwrap();
 
                     ctx.stop();
                     return;

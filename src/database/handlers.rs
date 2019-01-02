@@ -218,3 +218,10 @@ impl_handler! (GetCertificatesByDomain(conn, msg) for DbExecutor {
         .filter(certificates::domain_id.eq(&msg.domain_id))
         .load::<Certificate>(conn)?)
 });
+
+impl_handler! (DeleteCertificateByPath(conn, msg) for DbExecutor {
+    diesel::delete(certificates::table)
+        .filter(certificates::path.eq(&msg.path))
+        .execute(conn)
+        .map_err(|e| e.into())
+});

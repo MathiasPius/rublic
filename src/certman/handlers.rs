@@ -2,7 +2,7 @@ use regex::Regex;
 use actix::Handler;
 use futures::Future;
 use crate::errors::ServiceError;
-use crate::database::messages::{AddCertificateToDomain, GetDomainByFqdn};
+use crate::database::messages::{AddCertificateToDomain, GetDomainByFqdn, DeleteCertificateByPath};
 use crate::database::models::Certificate;
 use super::CertificateManager;
 use super::messages::*;
@@ -56,5 +56,15 @@ impl Handler<CertificateDiscovered> for CertificateManager {
         }
 
         Err(ServiceError::InternalServerError)
+    }
+}
+
+impl Handler<CertificateDisappeared> for CertificateManager {
+    type Result = Result<usize, ServiceError>;
+
+    fn handle(&mut self, msg: CertificateDisappeared, _: &mut Self::Context) -> Self::Result {
+        self.db.send(DeleteCertificateByPath{ 
+                path: msg.path.to_string_lossy().into()  
+            }).flatten().wait()
     }
 }
