@@ -13,7 +13,7 @@ actor_command! (GetGroup(id: String) -> Group);
 actor_command! (GetGroupsByDomain(id: String) -> Vec<Group>);
 actor_command! (GetGroupsByUser(id: String) -> Vec<Group>);
 actor_command! (SetGroupUsers(user_ids: Vec<String>, group_id: String) -> usize);
-actor_command! (SetGroupDomains(domain_ids: Vec<String>, group_id: String) -> usize);
+actor_command! (SetGroupDomains(fqdns: Vec<String>, group_id: String) -> usize);
 actor_command! (GetUsersByGroup(id: String) -> Vec<User>);
 actor_command! (GetDomainsByGroup(id: String) -> Vec<Domain>);
 actor_command! (GetGroups() -> Vec<Group>);

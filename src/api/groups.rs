@@ -58,7 +58,7 @@ fn api_get_group_domains((group_id, state): (Path<String>, State<AppState>))
 
 fn api_set_group_users((group_id, users, state): (Path<String>, Json<Vec<String>>, State<AppState>))
     -> FutureResponse<HttpResponse> {
-
+        
     into_api_response(state.db.clone()
         .send(SetGroupUsers { user_ids: users.into_inner(), group_id: group_id.clone() }).flatten()
         .and_then(move |_| {
@@ -67,11 +67,11 @@ fn api_set_group_users((group_id, users, state): (Path<String>, Json<Vec<String>
     )
 }
 
-fn api_set_group_domains((group_id, domains, state): (Path<String>, Json<Vec<String>>, State<AppState>))
+fn api_set_group_domains((group_id, fqdns, state): (Path<String>, Json<Vec<String>>, State<AppState>))
     -> FutureResponse<HttpResponse> {
 
     into_api_response(state.db.clone()
-        .send(SetGroupDomains { domain_ids: domains.into_inner(), group_id: group_id.clone() }).flatten()
+        .send(SetGroupDomains { fqdns: fqdns.into_inner(), group_id: group_id.clone() }).flatten()
         .and_then(move |_| {
             get_group(state.db.clone(), group_id.into_inner())
         })

@@ -141,7 +141,7 @@ impl_handler! (GetGroup(conn, msg) for DbExecutor {
 
 impl_handler! (SetGroupUsers(conn, msg) for DbExecutor {
     let group_id = msg.group_id.clone();
-
+    
     let mappings: Vec<UserGroupMapping> = msg.user_ids.into_iter().map(|id| {
         UserGroupMapping {
             user_id: id.clone(),
@@ -163,12 +163,18 @@ impl_handler! (SetGroupUsers(conn, msg) for DbExecutor {
 impl_handler! (SetGroupDomains(conn, msg) for DbExecutor {
     let group_id = msg.group_id.clone();
 
-    let mappings: Vec<DomainGroupMapping> = msg.domain_ids.into_iter().map(|id| {
+    let domain_ids = domains::table
+        .filter(domains::fqdn.eq_any(msg.fqdns))
+        .select(domains::id)
+        .load::<String>(conn)?;
+
+    let mappings: Vec<DomainGroupMapping> = domain_ids.into_iter().map(|id| {
         DomainGroupMapping {
             domain_id: id.clone(),
             group_id: group_id.clone()
         }
     }).collect();
+        
 
     diesel::delete(domain_group_mappings::table)
         .filter(domain_group_mappings::group_id.eq(&msg.group_id))
