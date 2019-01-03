@@ -128,7 +128,6 @@ fn get_domains_certificates(db: Addr<DbExecutor>, id: String)
     db.send(GetCertificatesByDomain { id }).flatten()
         .and_then(|certificates|
             Ok(certificates.into_iter().map(|cert| {
-                println!("formatting: {:?}", cert);
                 Certificate {
                     version: cert.id,
                     friendly_name: cert.friendly_name,
