@@ -4,6 +4,7 @@
 extern crate crypto;
 extern crate actix;
 extern crate actix_web;
+extern crate actix_web_httpauth;
 extern crate serde;
 extern crate chrono;
 extern crate dotenv;
@@ -19,7 +20,9 @@ extern crate openssl;
 #[macro_use] extern crate lazy_static;
 
 mod app;
+
 #[macro_use] mod models;
+mod authorization;
 mod schema;
 mod errors;
 mod cryptoutil;
@@ -33,9 +36,11 @@ use actix_web::server;
 use diesel::{r2d2::ConnectionManager, MysqlConnection};
 use dotenv::dotenv;
 use std::env;
+use crate::authorization::AuthorizationManager;
 use crate::certman::CertificateManager;
 use crate::database::DbExecutor;
 use crate::watcher::ArchiveWatcher;
+
 
 fn main() {
     std::env::set_var("RUST_LOG", "actix_web=info");
@@ -63,13 +68,18 @@ fn main() {
         CertificateManager { db: dbref.clone() }
     });
 
+    let dbref = database.clone();
+    let authman = Arbiter::start(move |_| {
+        AuthorizationManager { db: dbref.clone() }
+    });
+
     let certmanref = certman.clone();
     let dbref = database.clone();
     Arbiter::start(move |_| {
         ArchiveWatcher::new(dbref.clone(), certmanref.clone(), letsencrypt_archive)
     });
 
-    server::new(move || app::create_app(database.clone(), certman.clone()))
+    server::new(move || app::create_app(database.clone(), certman.clone(), authman.clone()))
         .bind("127.0.0.1:3000")
         .expect("Can not bind to '127.0.0.1:3000'")
         .start();

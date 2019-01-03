@@ -116,6 +116,17 @@ impl_handler! (GetUser(conn, msg) for DbExecutor {
     user.pop().ok_or(ServiceError::NotFound("user with that id not found".to_string()))
 });
 
+impl_handler! (GetUserPermissions(conn, msg) for DbExecutor{
+    user_group_mappings::table
+        .filter(user_group_mappings::user_id.eq(msg.id))
+        .inner_join(groups::table)
+        .inner_join(domain_group_mappings::table.on(domain_group_mappings::group_id.eq(groups::id)))
+        .inner_join(domains::table.on(domain_group_mappings::domain_id.eq(domains::id)))
+        .select((domains::fqdn, groups::permission))
+        .load::<DomainPermission>(conn)
+        .map_err(|e| e.into())
+});
+
 impl_handler! (CreateGroup(conn, msg) for DbExecutor {
     let new_group = Group {
         id: CryptoUtil::generate_uuid(),

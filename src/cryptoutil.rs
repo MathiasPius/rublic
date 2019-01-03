@@ -2,7 +2,7 @@
 use rand::{Rng};
 use uuid::Uuid;
 use crypto::{
-    pbkdf2::{/*pbkdf2_check,*/ pbkdf2_simple}, 
+    pbkdf2::{pbkdf2_check, pbkdf2_simple}, 
     sha2::Sha256,
     digest::Digest
 };
@@ -34,9 +34,8 @@ impl CryptoUtil {
         Uuid::new_v4().to_string()
     }
 
-/*
     pub fn check_key(key: &String, hashed_key: &String) -> bool {
-        pbkdf2_check(key, hashed_key).unwrap()
+        let salted_key = format!("Rublic Salt Goes Here {}", key);
+        pbkdf2_check(&salted_key, hashed_key).unwrap_or(false)
     }
-*/
 }

@@ -40,7 +40,6 @@ pub struct UserGroupMapping {
     pub group_id: String
 }
 
-
 #[derive(Identifiable, Queryable, Insertable, Associations, Debug)]
 #[primary_key(domain_id, id, friendly_name)]
 pub struct Certificate {
@@ -50,4 +49,10 @@ pub struct Certificate {
     pub path: String,
     pub not_before: NaiveDateTime,
     pub not_after: NaiveDateTime
+}
+
+#[derive(Queryable)]
+pub struct DomainPermission {
+    pub fqdn: String,
+    pub permission: String
 }

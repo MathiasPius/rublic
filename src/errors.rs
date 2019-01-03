@@ -17,6 +17,9 @@ pub enum ServiceError {
 
     #[fail(display = "Conflict: {}", _0)]
     Conflict(String),
+
+    #[fail(display = "Unauthorized")]
+    Unauthorized
 }
 
 #[derive(Serialize, Deserialize)]
@@ -30,6 +33,9 @@ impl ResponseError for ServiceError {
         match *self {
             ServiceError::InternalServerError => {
                 HttpResponse::InternalServerError().json(ApiError { error: "Internal Server Error".into() })
+            },
+            ServiceError::Unauthorized => {
+                HttpResponse::Unauthorized().json(ApiError { error: "Unauthorized".into() })
             },
             ServiceError::BadRequest(ref message) => HttpResponse::BadRequest().json(ApiError { error: message.clone() }),
             ServiceError::NotFound(ref message) => HttpResponse::NotFound().json(ApiError { error: message.clone() }),
