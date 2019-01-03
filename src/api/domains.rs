@@ -15,6 +15,19 @@ pub fn register(router: Scope<AppState>) -> Scope<AppState> {
                 r.method(Method::GET).with(api_get_domain);
                 r.method(Method::POST).with(api_create_domain);
             })
+            .nested("/certs/", |certs| {
+                certs.nested("/{version}", |version| {
+                    version.resource("/{filename}", |r| {
+                        r.method(Method::GET).with(api_get_domain_certificate);
+                    })
+                    .resource("", |r| {
+                        r.method(Method::GET).with(api_get_domain_certificates_version);
+                    })
+                })
+                .resource("", |r| {
+                    r.method(Method::GET).with(api_get_domain_certificates);
+                })
+            })
         })
 }
 
@@ -38,6 +51,65 @@ fn api_get_domain((fqdn, state): (Path<String>, State<AppState>))
     into_api_response(get_domain_by_fqdn(state.db.clone(), fqdn.to_string()))
 }
 
+fn api_get_domain_certificates((fqdn, state): (Path<String>, State<AppState>)) 
+    -> FutureResponse<HttpResponse> {
+
+    into_api_response(state.db.send(GetDomainByFqdn { fqdn: fqdn.into_inner() }).flatten()
+        .and_then(move |domain| {
+            get_domains_certificates(state.db.clone(), domain.id)
+        }))
+}
+
+fn api_get_domain_certificate((path, state): (Path<(String, i32, String)>, State<AppState>))
+    -> FutureResponse<HttpResponse> {
+
+    let (fqdn, version, friendly_name) = path.into_inner();
+
+    into_api_response(
+        state.db.send(GetDomainByFqdn{ fqdn }).flatten()
+            .and_then(move |domain|
+                state.db.send(GetCertificate { 
+                    domain_id: domain.id, 
+                    id: version,
+                    friendly_name
+                }).flatten()
+                .and_then(move |cert| -> Result<Certificate, ServiceError> {
+                    Ok(Certificate {
+                        version: cert.id,
+                        friendly_name: cert.friendly_name,
+                        not_before: cert.not_before,
+                        not_after: cert.not_after
+                    })
+                })
+            )
+    )
+
+}
+
+fn api_get_domain_certificates_version((path, state): (Path<(String, i32)>, State<AppState>))
+    -> FutureResponse<HttpResponse> {
+
+    let (fqdn, version) = path.into_inner();
+
+    into_api_response(
+        state.db.send(GetDomainByFqdn{ fqdn }).flatten()
+            .and_then(move |domain|
+                state.db.send(GetCertificatesByDomainAndId { 
+                    domain_id: domain.id, 
+                    id: version
+                }).flatten()
+                .and_then(move |certificates| -> Result<Vec<Certificate>, ServiceError> {
+                    Ok(certificates.into_iter().map(|cert| Certificate {
+                        version: cert.id,
+                        friendly_name: cert.friendly_name,
+                        not_before: cert.not_before,
+                        not_after: cert.not_after
+                    }).collect())
+                })
+            )
+    )
+}
+
 fn get_domains_groups(db: Addr<DbExecutor>, id: String) 
     -> impl Future<Item = Vec<PluggableGroup>, Error = ServiceError> {
     db.send(GetGroupsByDomain { id }).flatten()
@@ -58,6 +130,7 @@ fn get_domains_certificates(db: Addr<DbExecutor>, id: String)
             Ok(certificates.into_iter().map(|cert| {
                 println!("formatting: {:?}", cert);
                 Certificate {
+                    version: cert.id,
                     friendly_name: cert.friendly_name,
                     not_after: cert.not_after,
                     not_before: cert.not_before

@@ -14,6 +14,7 @@ pub struct NewGroupRequest {
 
 #[derive(Serialize)]
 pub struct Certificate {
+    pub version: i32,
     pub friendly_name: String,
     pub not_before: NaiveDateTime,
     pub not_after: NaiveDateTime

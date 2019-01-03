@@ -213,9 +213,27 @@ impl_handler! (AddCertificateToDomain(conn, msg) for DbExecutor {
     Ok(msg.cert)
 });
 
+impl_handler! (GetCertificate(conn, msg) for DbExecutor {
+    let mut certs = certificates::table
+        .filter(certificates::domain_id.eq(&msg.domain_id))
+        .filter(certificates::id.eq(&msg.id))
+        .filter(certificates::friendly_name.eq(&msg.friendly_name))
+        .limit(1)
+        .load::<Certificate>(conn)?;
+
+    certs.pop().ok_or(ServiceError::NotFound("certificate not found".to_string()))
+});
+
 impl_handler! (GetCertificatesByDomain(conn, msg) for DbExecutor {
     Ok(certificates::table
         .filter(certificates::domain_id.eq(&msg.id))
+        .load::<Certificate>(conn)?)
+});
+
+impl_handler! (GetCertificatesByDomainAndId(conn, msg) for DbExecutor {
+    Ok(certificates::table
+        .filter(certificates::domain_id.eq(&msg.domain_id))
+        .filter(certificates::id.eq(&msg.id))
         .load::<Certificate>(conn)?)
 });
 

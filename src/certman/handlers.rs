@@ -10,6 +10,7 @@ use crate::database::messages::{AddCertificateToDomain, GetDomainByFqdn, DeleteC
 use crate::database::models::Certificate;
 use super::CertificateManager;
 use super::messages::*;
+use super::models::*;
 
 lazy_static! {
     static ref CERT_PATTERN: Regex = Regex::new(r"(\w+)([0-9]+)\.(\w+)").unwrap();
@@ -87,5 +88,25 @@ impl Handler<CertificateDisappeared> for CertificateManager {
         self.db.send(DeleteCertificateByPath{ 
                 path: msg.path.to_string_lossy().into()  
             }).flatten().wait()
+    }
+}
+
+impl Handler<GetCertificateByPath> for CertificateManager {
+    type Result = Result<SingleCertificate, ServiceError>;
+
+    fn handle(&mut self, msg: GetCertificateByPath, _: &mut Self::Context) -> Self::Result {
+        let mut bytes = Vec::new();
+        if let Ok(mut file) = File::open(&msg.path) {
+            if let Ok(_) = file.read_to_end(&mut bytes) {
+                // Verify that the file is actually a real certificate
+                if let Ok(_) = X509::from_pem(&bytes[..]) {
+                    return Ok(SingleCertificate {
+                        raw_data: bytes
+                    });
+                }
+            }
+        };
+
+        Err(ServiceError::InternalServerError)
     }
 }

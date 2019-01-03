@@ -21,3 +21,5 @@ actor_command! (GetGroups() -> Vec<Group>);
 actor_command! (AddCertificateToDomain(cert: Certificate) -> Certificate);
 actor_command! (DeleteCertificateByPath(path: String) -> usize);
 actor_command! (GetCertificatesByDomain(id: String) -> Vec<Certificate>);
+actor_command! (GetCertificatesByDomainAndId(domain_id: String, id: i32) -> Vec<Certificate>);
+actor_command! (GetCertificate(domain_id: String, id: i32, friendly_name: String) -> Certificate);
