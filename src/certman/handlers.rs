@@ -1,6 +1,10 @@
 use regex::Regex;
 use actix::Handler;
 use futures::Future;
+use std::io::Read;
+use std::fs::File;
+use openssl::x509::X509;
+use chrono::{NaiveDate, NaiveDateTime};
 use crate::errors::ServiceError;
 use crate::database::messages::{AddCertificateToDomain, GetDomainByFqdn, DeleteCertificateByPath};
 use crate::database::models::Certificate;
@@ -20,6 +24,23 @@ impl Handler<CertificateDiscovered> for CertificateManager {
 
         let path_str: String = path.to_string_lossy().into();
         let filename: String = path.file_name().unwrap().to_string_lossy().into();
+
+
+        // This feels like a really dirty way to parse dates
+        let mut not_before: NaiveDateTime = NaiveDate::from_ymd(1970, 1, 1).and_hms(0, 0, 0);
+        let mut not_after: NaiveDateTime = NaiveDate::from_ymd(1970, 1, 1).and_hms(0, 0, 0);
+
+        let mut bytes = Vec::new();
+        if let Ok(mut file) = File::open(&path) {
+            if let Ok(_) = file.read_to_end(&mut bytes) {
+                if let Ok(parsed_cert) = X509::from_pem(&bytes[..]) {
+                    let unparsed_before = &format!("{}", &parsed_cert.not_before());
+                    let unparsed_after = &format!("{}", &parsed_cert.not_after());
+                    not_before = NaiveDateTime::parse_from_str(unparsed_before, "%b %e %T %Y GMT").unwrap();
+                    not_after = NaiveDateTime::parse_from_str(unparsed_after, "%b %e %T %Y GMT").unwrap();
+                }
+            }
+        };
 
         if let Some(names) = CERT_PATTERN.captures(&filename) {
             if names.len() != 4 {
@@ -44,8 +65,8 @@ impl Handler<CertificateDiscovered> for CertificateManager {
                         domain_id: domain.id,
                         friendly_name: format!("{}.{}", certname, fileext),
                         path: path.to_string_lossy().into(),
-                        not_before: chrono::NaiveDate::from_ymd(2018, 6, 2).and_hms(13, 37, 0),
-                        not_after: chrono::NaiveDate::from_ymd(2019, 6, 2).and_hms(13, 37, 0)
+                        not_before,
+                        not_after
                     };
 
                     self.db
