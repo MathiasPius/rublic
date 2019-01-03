@@ -140,7 +140,7 @@ fn get_group_domains(db: Addr<DbExecutor>, id: String)
                 id: domain.id,
                 fqdn: domain.fqdn,
                 groups: None,
-                certificates: None
+                latest_certs: None
             }).collect())
         )
 }

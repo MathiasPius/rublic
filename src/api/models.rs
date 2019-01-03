@@ -29,7 +29,7 @@ pub struct PluggableDomain {
     pub groups: Option<Vec<PluggableGroup>>,
 
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub certificates: Option<Vec<Certificate>>
+    pub latest_certs: Option<Vec<Certificate>>
 }
 
 #[derive(Serialize)]

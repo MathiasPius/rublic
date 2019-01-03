@@ -50,7 +50,7 @@ fn api_create_domain((fqdn, state): (Path<String>, State<AppState>))
             fqdn: domain.fqdn,
             id: domain.id,
             groups: None,
-            certificates: None
+            latest_certs: None
         }))
     )
 }
@@ -125,7 +125,10 @@ fn api_get_domain_certificates_version((path, state): (Path<(String, i32)>, Stat
     let (fqdn, version) = path.into_inner();
 
     into_api_response(
-        get_domain_certificates_version(state.db.clone(), (fqdn, Some(version)))
+        state.db.send(GetDomainByFqdn{ fqdn }).flatten()
+            .and_then(move |domain|
+                get_domain_certificates_version(state.db.clone(), (domain.id, Some(version)))
+            )
     )
 }
 
@@ -133,28 +136,28 @@ fn api_get_domain_latest_certificates_version((fqdn, state): (Path<String>, Stat
     -> FutureResponse<HttpResponse> {
 
     into_api_response(
-        get_domain_certificates_version(state.db.clone(), (fqdn.into_inner(), None))
+        state.db.send(GetDomainByFqdn{ fqdn: fqdn.into_inner() }).flatten()
+            .and_then(move |domain|
+                get_domain_certificates_version(state.db.clone(), (domain.id, None))
+            )
     )
 }
 
-fn get_domain_certificates_version(db: Addr<DbExecutor>, (fqdn, version): (String, Option<i32>))
+fn get_domain_certificates_version(db: Addr<DbExecutor>, (domain_id, version): (String, Option<i32>))
     -> impl Future<Item = Vec<Certificate>, Error = ServiceError> {
 
-    db.send(GetDomainByFqdn{ fqdn }).flatten()
-        .and_then(move |domain|
-            db.send(GetCertificatesByDomainAndId { 
-                domain_id: domain.id, 
-                id: version
-            }).flatten()
-            .and_then(move |certificates| -> Result<Vec<Certificate>, ServiceError> {
-                Ok(certificates.into_iter().map(|cert| Certificate {
-                    version: cert.id,
-                    friendly_name: cert.friendly_name,
-                    not_before: cert.not_before,
-                    not_after: cert.not_after
-                }).collect())
-            })
-        )
+    db.send(GetCertificatesByDomainAndId { 
+            domain_id, 
+            id: version
+        }).flatten()
+        .and_then(move |certificates| -> Result<Vec<Certificate>, ServiceError> {
+            Ok(certificates.into_iter().map(|cert| Certificate {
+                version: cert.id,
+                friendly_name: cert.friendly_name,
+                not_before: cert.not_before,
+                not_after: cert.not_after
+            }).collect())
+        })
 }
 
 fn get_domains_groups(db: Addr<DbExecutor>, id: String) 
@@ -190,12 +193,12 @@ fn get_domain_by_fqdn(db: Addr<DbExecutor>, fqdn: String)
     db.send(GetDomainByFqdn { fqdn }).flatten()
         .and_then(move |domain| 
             get_domains_groups(db.clone(), domain.id.clone())
-                .join(get_domains_certificates(db.clone(), domain.id.clone()))
+                .join(get_domain_certificates_version(db.clone(), (domain.id.clone(), None)))
                 .and_then(|(groups, certificates)| Ok(PluggableDomain {
                     id: domain.id.clone(),
                     fqdn: domain.fqdn,
                     groups: Some(groups),
-                    certificates: Some(certificates)
+                    latest_certs: Some(certificates)
                 }))
         )
 }
