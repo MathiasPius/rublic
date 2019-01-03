@@ -36,7 +36,7 @@ table! {
     users (id) {
         id -> Char,
         friendly_name -> Varchar,
-        hashed_key -> Char,
+        hashed_key -> Varchar,
     }
 }
 
