@@ -7,13 +7,15 @@ use crate::database::DbExecutor;
 use crate::database::messages::*;
 use crate::certman::messages::*;
 use crate::certman::CertificateManager;
+use crate::authorization::authorize;
 use super::into_api_response;
 use super::models::*;
 
 pub fn register(router: Scope<AppState>) -> Scope<AppState> {
     router
         .nested("/{fqdn}", |entry| {
-            entry.resource("", |r| {
+            entry.middleware(authorize(vec![("fqdn", "read")]))
+            .resource("", |r| {
                 r.method(Method::GET).with(api_get_domain);
                 r.method(Method::POST).with(api_create_domain);
             })

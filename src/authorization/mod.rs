@@ -60,29 +60,37 @@ impl Middleware<AppState> for ClaimsCheckerMiddleware {
         if let Some(actual_claims) = req.extensions().get::<Vec<Claim>>() {
             let params = req.match_info();
 
+            // Make sure user has all required claims
             for required_claim in &self.required_claims {
                 if let Some(claim) = params.get(&required_claim.subject) {
                     if !actual_claims.contains(&Claim { subject: claim.into(), permission: required_claim.permission.clone() }) {
                         return Ok(Started::Response(HttpResponse::Unauthorized().finish()));
                     }
                 } else {
+                    // If the parameter we're trying to authorize against isn't in the path,
+                    // err on the side of caution and abort
                     return Ok(Started::Response(HttpResponse::Unauthorized().finish()));
                 }
             }
         } else {
+            // If we get to this poinrt, it means that no Vec<Claim> extension has been
+            // registered on the request object, meaning the user has not been authorized.
+            // Since this Middleware has been triggered, *some* authorization was intended
             return Ok(Started::Response(HttpResponse::Unauthorized().finish()));
         }
 
+        // If all the required_claims have been found in the actual_claims,
+        // we've successfully been cleared
         Ok(Started::Done)
     }
 }
 
-pub fn authorize(claims: Vec<(String, String)>) -> ClaimsCheckerMiddleware {
+pub fn authorize(claims: Vec<(&str, &str)>) -> ClaimsCheckerMiddleware {
     ClaimsCheckerMiddleware {
         required_claims: claims.into_iter().map(|claims| {
             Claim {
-                subject: claims.0,
-                permission: claims.1
+                subject: claims.0.into(),
+                permission: claims.1.into()
             }
         }).collect()
     }
