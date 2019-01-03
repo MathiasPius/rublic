@@ -2,9 +2,10 @@ use actix::Addr;
 use actix_web::{State, http::Method, Scope, HttpResponse, FutureResponse, Path, Json};
 use futures::future::Future;
 use crate::app::AppState;
-use crate::database::DbExecutor;
 use crate::errors::ServiceError;
+use crate::database::DbExecutor;
 use crate::database::messages::*;
+use crate::authorization::authorize;
 use crate::cryptoutil::CryptoUtil;
 use super::into_api_response;
 use super::models::*;
@@ -12,6 +13,7 @@ use super::models::*;
 
 pub fn register(router: Scope<AppState>) -> Scope<AppState> {
     router
+        .middleware(authorize(vec![("*", "*")]))
         .nested("/{user_id}", |entry| {
             entry.resource("", |r| {
                 r.method(Method::GET).with(api_get_user);

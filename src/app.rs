@@ -30,5 +30,4 @@ pub fn create_app(db: Addr<DbExecutor>, certman: Addr<CertificateManager>, authm
         .scope("/api", |api| {
             crate::api::register(api)
         })
-
 }

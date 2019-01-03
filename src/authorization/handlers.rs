@@ -1,3 +1,4 @@
+use std::env;
 use actix::Handler;
 use futures::Future;
 use crate::errors::ServiceError;
@@ -11,6 +12,20 @@ impl Handler<AuthorizeUser> for AuthorizationManager {
     type Result = Result<Vec<Claim>, ServiceError>;
 
     fn handle(&mut self, msg: AuthorizeUser, _: &mut Self::Context) -> Self::Result {
+
+        // This is the only account that can actually make changes
+        if msg.friendly_name == "admin" {
+            let admin_password = env::var("RUBLIC_ADMIN_PASSWORD")
+                .expect("No administrator password was set!");
+
+            let hashed_key = CryptoUtil::hash_key(&admin_password);
+            if CryptoUtil::check_key(&msg.password, &hashed_key) {
+                return Ok(vec![Claim { subject: "*".into(), permission: "*".into() }]);
+            } else {
+                return Err(ServiceError::Unauthorized);
+            }
+        }
+
         self.db.send(GetUserByName { friendly_name: msg.friendly_name.clone() }).flatten()
             .and_then(move |user|
                 if CryptoUtil::check_key(&msg.password, &user.hashed_key) {

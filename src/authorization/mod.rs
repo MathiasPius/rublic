@@ -58,6 +58,12 @@ pub struct ClaimsCheckerMiddleware {
 impl Middleware<AppState> for ClaimsCheckerMiddleware {
     fn start(&self, req: &HttpRequest<AppState>) -> Result<Started> {
         if let Some(actual_claims) = req.extensions().get::<Vec<Claim>>() {
+
+            // If we're the admin, short-circuit checks
+            if actual_claims.contains(&Claim { subject: "*".into(), permission: "*".into() }) {
+                return Ok(Started::Done)
+            }
+
             let params = req.match_info();
 
             // Make sure user has all required claims
