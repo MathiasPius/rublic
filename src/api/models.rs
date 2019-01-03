@@ -1,4 +1,5 @@
 use serde_derive::{Serialize, Deserialize};
+use chrono::NaiveDateTime;
 
 #[derive(Deserialize)]
 pub struct NewUserRequest {
@@ -12,12 +13,22 @@ pub struct NewGroupRequest {
 
 
 #[derive(Serialize)]
+pub struct Certificate {
+    pub friendly_name: String,
+    pub not_before: NaiveDateTime,
+    pub not_after: NaiveDateTime
+}
+
+#[derive(Serialize)]
 pub struct PluggableDomain {
     pub id: String,
     pub fqdn: String,
         
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub groups: Option<Vec<PluggableGroup>>
+    pub groups: Option<Vec<PluggableGroup>>,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub certificates: Option<Vec<Certificate>>
 }
 
 #[derive(Serialize)]

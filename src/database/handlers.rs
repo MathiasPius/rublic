@@ -151,7 +151,7 @@ impl_handler! (SetGroupUsers(conn, msg) for DbExecutor {
 
     diesel::delete(user_group_mappings::table)
         .filter(user_group_mappings::group_id.eq(&msg.group_id))
-        .execute(conn)?;
+        .execute(conn).ok();
 
     diesel::insert_into(user_group_mappings::table)
         .values(&mappings)
@@ -172,7 +172,7 @@ impl_handler! (SetGroupDomains(conn, msg) for DbExecutor {
 
     diesel::delete(domain_group_mappings::table)
         .filter(domain_group_mappings::group_id.eq(&msg.group_id))
-        .execute(conn)?;
+        .execute(conn).ok();
 
     diesel::insert_into(domain_group_mappings::table)
         .values(&mappings)
@@ -215,7 +215,7 @@ impl_handler! (AddCertificateToDomain(conn, msg) for DbExecutor {
 
 impl_handler! (GetCertificatesByDomain(conn, msg) for DbExecutor {
     Ok(certificates::table
-        .filter(certificates::domain_id.eq(&msg.domain_id))
+        .filter(certificates::domain_id.eq(&msg.id))
         .load::<Certificate>(conn)?)
 });
 

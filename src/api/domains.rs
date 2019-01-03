@@ -1,10 +1,12 @@
+use actix::Addr;
 use actix_web::{State, http::Method, Scope, HttpResponse, FutureResponse, Path};
 use futures::future::Future;
 use crate::app::AppState;
 use crate::errors::ServiceError;
+use crate::database::DbExecutor;
+use crate::database::messages::*;
 use super::into_api_response;
 use super::models::*;
-use crate::database::messages::*;
 
 pub fn register(router: Scope<AppState>) -> Scope<AppState> {
     router
@@ -24,7 +26,8 @@ fn api_create_domain((fqdn, state): (Path<String>, State<AppState>))
         .and_then(|domain| Ok(PluggableDomain {
             fqdn: domain.fqdn,
             id: domain.id,
-            groups: None
+            groups: None,
+            certificates: None
         }))
     )
 }
@@ -32,13 +35,12 @@ fn api_create_domain((fqdn, state): (Path<String>, State<AppState>))
 fn api_get_domain((fqdn, state): (Path<String>, State<AppState>))
     -> FutureResponse<HttpResponse> {
   
-    into_api_response(get_domain_by_fqdn(state, fqdn.to_string()))
+    into_api_response(get_domain_by_fqdn(state.db.clone(), fqdn.to_string()))
 }
 
-fn get_domains_groups(state: State<AppState>, id: String) 
+fn get_domains_groups(db: Addr<DbExecutor>, id: String) 
     -> impl Future<Item = Vec<PluggableGroup>, Error = ServiceError> {
-    state.db
-        .send(GetGroupsByDomain { id }).flatten()
+    db.send(GetGroupsByDomain { id }).flatten()
         .and_then(|groups| 
             Ok(groups.into_iter().map(|group| PluggableGroup {
                 id: group.id,
@@ -49,17 +51,32 @@ fn get_domains_groups(state: State<AppState>, id: String)
         )
 }
 
-fn get_domain_by_fqdn(state: State<AppState>, fqdn: String)
-    -> impl Future<Item = PluggableDomain, Error = ServiceError> {
+fn get_domains_certificates(db: Addr<DbExecutor>, id: String) 
+    -> impl Future<Item = Vec<Certificate>, Error = ServiceError> {
+    db.send(GetCertificatesByDomain { id }).flatten()
+        .and_then(|certificates|
+            Ok(certificates.into_iter().map(|cert| {
+                println!("formatting: {:?}", cert);
+                Certificate {
+                    friendly_name: cert.friendly_name,
+                    not_after: cert.not_after,
+                    not_before: cert.not_before
+                }
+            }).collect())
+        )
+}
 
-    state.db
-        .send(GetDomainByFqdn { fqdn }).flatten()
-        .and_then(|domain| 
-            get_domains_groups(state, domain.id.clone())
-                .and_then(|groups| Ok(PluggableDomain {
+fn get_domain_by_fqdn(db: Addr<DbExecutor>, fqdn: String)
+    -> impl Future<Item = PluggableDomain, Error = ServiceError> {
+    db.send(GetDomainByFqdn { fqdn }).flatten()
+        .and_then(move |domain| 
+            get_domains_groups(db.clone(), domain.id.clone())
+                .join(get_domains_certificates(db.clone(), domain.id.clone()))
+                .and_then(|(groups, certificates)| Ok(PluggableDomain {
                     id: domain.id.clone(),
                     fqdn: domain.fqdn,
-                    groups: Some(groups)
+                    groups: Some(groups),
+                    certificates: Some(certificates)
                 }))
         )
 }

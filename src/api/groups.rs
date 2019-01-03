@@ -101,7 +101,6 @@ fn api_get_group((group_id, state): (Path<String>, State<AppState>))
 fn get_group(db: Addr<DbExecutor>, id: String)
     -> impl Future<Item = PluggableGroup, Error = ServiceError> {
 
-
     db.clone()
         .send(GetGroup { id: id.clone() }).flatten()
         .join3(
@@ -140,7 +139,8 @@ fn get_group_domains(db: Addr<DbExecutor>, id: String)
             Ok(domains.into_iter().map(|domain| PluggableDomain {
                 id: domain.id,
                 fqdn: domain.fqdn,
-                groups: None
+                groups: None,
+                certificates: None
             }).collect())
         )
 }
