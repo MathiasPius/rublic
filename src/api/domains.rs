@@ -6,6 +6,7 @@ use crate::errors::ServiceError;
 use crate::database::DbExecutor;
 use crate::database::messages::*;
 use crate::certman::messages::*;
+use crate::certman::models::*;
 use crate::certman::CertificateManager;
 use crate::authorization::authorize;
 use super::into_api_response;
@@ -14,7 +15,7 @@ use super::models::*;
 pub fn register(router: Scope<AppState>) -> Scope<AppState> {
     router
         .nested("/{fqdn}", |entry| {
-            entry.middleware(authorize(vec![("fqdn", "read")]))
+            entry.middleware(authorize(vec![("fqdn", "public")]))
             .resource("", |r| {
                 r.method(Method::GET).with(api_get_domain);
                 r.method(Method::POST).with(api_create_domain);
@@ -81,7 +82,7 @@ fn api_get_domain_certificate((path, state): (Path<(String, i32, String)>, State
         .and_then(|result| {
             Ok(HttpResponse::Ok()
                 .content_type("application/x-pem-file")
-                .body(result))
+                .body(result.raw_data))
         })
         .from_err()
         .responder()
@@ -96,14 +97,14 @@ fn api_get_domain_latest_certificate((path, state): (Path<(String, String)>, Sta
         .and_then(|result| {
             Ok(HttpResponse::Ok()
                 .content_type("application/x-pem-file")
-                .body(result))
+                .body(result.raw_data))
         })
         .from_err()
         .responder()
 }
 
 fn get_domain_certificate(db: Addr<DbExecutor>, certman: Addr<CertificateManager>, (fqdn, version, friendly_name): (String, Option<i32>, String))
-    -> impl Future<Item = Vec<u8>, Error = ServiceError>
+    -> impl Future<Item = SingleCertificate, Error = ServiceError>
 {
     db.send(GetDomainByFqdn{ fqdn }).flatten()
         .and_then(move |domain|
@@ -115,7 +116,7 @@ fn get_domain_certificate(db: Addr<DbExecutor>, certman: Addr<CertificateManager
             .and_then(move |cert| {
                 certman.send(GetCertificateByPath{ path: cert.path }).flatten()
                     .and_then(move |file| {
-                        Ok(file.raw_data)
+                        Ok(file)
                     })
             })
         )
