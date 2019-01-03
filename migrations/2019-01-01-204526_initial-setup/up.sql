@@ -13,7 +13,7 @@ CREATE TABLE IF NOT EXISTS rublic.domains (
 CREATE TABLE IF NOT EXISTS rublic.users (
     id CHAR(36) NOT NULL,
 	friendly_name VARCHAR(64) NOT NULL,
-	hashed_key CHAR(64) NOT NULL,
+	hashed_key VARCHAR(256) NOT NULL,
     CONSTRAINT users_PK PRIMARY KEY (id),
 	CONSTRAINT users_friendly_name_UN UNIQUE KEY (friendly_name)
 );
