@@ -220,14 +220,26 @@ impl_handler! (AddCertificateToDomain(conn, msg) for DbExecutor {
 });
 
 impl_handler! (GetCertificate(conn, msg) for DbExecutor {
-    let mut certs = certificates::table
-        .filter(certificates::domain_id.eq(&msg.domain_id))
-        .filter(certificates::id.eq(&msg.id))
-        .filter(certificates::friendly_name.eq(&msg.friendly_name))
-        .limit(1)
-        .load::<Certificate>(conn)?;
 
-    certs.pop().ok_or(ServiceError::NotFound("certificate not found".to_string()))
+    if let Some(id) = &msg.id {
+        let mut certs = certificates::table
+            .filter(certificates::domain_id.eq(&msg.domain_id))
+            .filter(certificates::id.eq(id))
+            .filter(certificates::friendly_name.eq(&msg.friendly_name))
+            .limit(1)
+            .load::<Certificate>(conn)?;
+
+        return certs.pop().ok_or(ServiceError::NotFound("certificate not found".to_string()))
+    } else {
+        let mut certs = certificates::table
+            .filter(certificates::domain_id.eq(&msg.domain_id))
+            .filter(certificates::friendly_name.eq(&msg.friendly_name))
+            .order(certificates::id.desc())
+            .limit(1)
+            .load::<Certificate>(conn)?;
+
+        return certs.pop().ok_or(ServiceError::NotFound("certificate not found".to_string()))
+    }
 });
 
 impl_handler! (GetCertificatesByDomain(conn, msg) for DbExecutor {
@@ -237,10 +249,31 @@ impl_handler! (GetCertificatesByDomain(conn, msg) for DbExecutor {
 });
 
 impl_handler! (GetCertificatesByDomainAndId(conn, msg) for DbExecutor {
-    Ok(certificates::table
-        .filter(certificates::domain_id.eq(&msg.domain_id))
-        .filter(certificates::id.eq(&msg.id))
-        .load::<Certificate>(conn)?)
+
+    if let Some(id) = &msg.id {
+        return Ok(certificates::table
+            .filter(certificates::domain_id.eq(&msg.domain_id))
+            .filter(certificates::id.eq(&id))
+            .load::<Certificate>(conn)?
+        )
+    } else {
+        // This is an extremely stupid way of getting the latest versions of certificates,
+        // but I simply can't find a nice way to do nested inner joins like I would in plain sql
+
+        let certs = certificates::table
+            .filter(certificates::domain_id.eq(&msg.domain_id))
+            .order(certificates::id.desc())
+            .limit(10)
+            .load::<Certificate>(conn)?;
+
+        if certs.is_empty() {
+            return Err(ServiceError::NotFound("no certificates found".into()))
+        }
+
+        // Get all certificates whose version is equal to the highest version found
+        let latest = certs[0].id;
+        return Ok(certs.into_iter().take_while(|x| x.id == latest).collect());
+    }
 });
 
 impl_handler! (DeleteCertificateByPath(conn, msg) for DbExecutor {
