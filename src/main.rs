@@ -56,19 +56,20 @@ fn main() {
         .build(manager)
         .expect("Failed to create pool.");
 
-    let database: Addr<DbExecutor>  = SyncArbiter::start(4, move || DbExecutor(pool.clone()));
+    let database = SyncArbiter::start(4, move || DbExecutor(pool.clone()));
 
     let dbref = database.clone();
     let certman = Arbiter::start(move |_| {
         CertificateManager { db: dbref.clone() }
     });
 
+    let certmanref = certman.clone();
     let dbref = database.clone();
     Arbiter::start(move |_| {
-        ArchiveWatcher::new(dbref.clone(), certman.clone(), letsencrypt_archive)
+        ArchiveWatcher::new(dbref.clone(), certmanref.clone(), letsencrypt_archive)
     });
 
-    server::new(move || app::create_app(database.clone()))
+    server::new(move || app::create_app(database.clone(), certman.clone()))
         .bind("127.0.0.1:3000")
         .expect("Can not bind to '127.0.0.1:3000'")
         .start();

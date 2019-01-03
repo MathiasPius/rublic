@@ -1,10 +1,11 @@
 use actix::Addr;
-use actix_web::{State, http::Method, Scope, HttpResponse, FutureResponse, Path};
+use actix_web::{State, http::Method, Scope, HttpResponse, FutureResponse, Path, AsyncResponder};
 use futures::future::Future;
 use crate::app::AppState;
 use crate::errors::ServiceError;
 use crate::database::DbExecutor;
 use crate::database::messages::*;
+use crate::certman::messages::*;
 use super::into_api_response;
 use super::models::*;
 
@@ -65,25 +66,27 @@ fn api_get_domain_certificate((path, state): (Path<(String, i32, String)>, State
 
     let (fqdn, version, friendly_name) = path.into_inner();
 
-    into_api_response(
-        state.db.send(GetDomainByFqdn{ fqdn }).flatten()
-            .and_then(move |domain|
-                state.db.send(GetCertificate { 
-                    domain_id: domain.id, 
-                    id: version,
-                    friendly_name
-                }).flatten()
-                .and_then(move |cert| -> Result<Certificate, ServiceError> {
-                    Ok(Certificate {
-                        version: cert.id,
-                        friendly_name: cert.friendly_name,
-                        not_before: cert.not_before,
-                        not_after: cert.not_after
+    state.db.send(GetDomainByFqdn{ fqdn }).flatten()
+        .and_then(move |domain|
+            state.db.send(GetCertificate { 
+                domain_id: domain.id, 
+                id: version,
+                friendly_name
+            }).flatten()
+            .and_then(move |cert| {
+                state.certman.send(GetCertificateByPath{ path: cert.path }).flatten()
+                    .and_then(move |file| {
+                        Ok(file.raw_data)
                     })
-                })
-            )
-    )
-
+            })
+        )
+        .and_then(|result| {
+            Ok(HttpResponse::Ok()
+                .content_type("application/x-pem-file")
+                .body(result))
+        })
+        .from_err()
+        .responder()
 }
 
 fn api_get_domain_certificates_version((path, state): (Path<(String, i32)>, State<AppState>))
