@@ -18,15 +18,15 @@ fn api_password_grant_query((state, grant): (State<AppState>, Query<Grant>))
 
     match grant.into_inner() {
         Grant::Password(pw) => {
-            return password_grant(state, pw.username, pw.password)
+            password_grant(state, pw.username, pw.password)
                 .and_then(|response| {
                     Ok(HttpResponse::Ok().json(response))
                 })
                 .from_err()
-                .responder();
+                .responder()
         },
         Grant::Refresh(rf) => {
-            return state.authman.clone()
+            state.authman.clone()
                 .send(RefreshToken { 
                     token: rf.refresh_token.clone(),
                     lifetime: *JWT_ACCESS_LIFETIME
@@ -41,7 +41,7 @@ fn api_password_grant_query((state, grant): (State<AppState>, Query<Grant>))
                     Ok(HttpResponse::Ok().json(response))
                 })
                 .from_err()
-                .responder();
+                .responder()
         }
     }   
 }
@@ -50,7 +50,7 @@ fn password_grant(state: State<AppState>, username: String, password: String)
     -> impl Future<Item = TokenResponse, Error = ServiceError> {
 
     state.authman.clone()
-        .send(AuthorizeUser{ friendly_name: username, password: password }).flatten()
+        .send(AuthorizeUser{ friendly_name: username, password }).flatten()
         .and_then(move |claims| {
             state.authman.clone().send(BuildTokenFromClaims {
                 lifetime: *JWT_ACCESS_LIFETIME,

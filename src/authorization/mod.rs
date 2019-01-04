@@ -29,7 +29,7 @@ lazy_static! {
         validate_iat: true,
         validate_nbf: true,
         aud: Some(JWT_AUDIENCE.to_string().into()),
-        iss: Some(JWT_ISSUER.to_string().into()),
+        iss: Some(JWT_ISSUER.to_string()),
         sub: None,
         algorithms: vec![Algorithm::HS512]
     };
@@ -38,10 +38,10 @@ lazy_static! {
         .expect("RUBLIC_SHARED_SECRET environment variable is not defined!");
 
     static ref JWT_AUDIENCE: String = env::var("RUBLIC_JWT_AUDIENCE")
-        .unwrap_or("rublic-audience".into());
+        .unwrap_or_else(|_| "rublic-audience".into());
 
     static ref JWT_ISSUER: String = env::var("RUBLIC_JWT_ISSUER")
-        .unwrap_or("rublic-issuer".into());
+        .unwrap_or_else(|_| "rublic-issuer".into());
 
     pub static ref JWT_ACCESS_LIFETIME: Duration = Duration::hours(1);
     pub static ref JWT_REFRESH_LIFETIME: Duration = Duration::days(30);

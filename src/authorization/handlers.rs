@@ -16,7 +16,7 @@ impl Handler<AuthorizeUser> for AuthorizationManager {
 
         // This is the only account that can actually make changes
         if msg.friendly_name == "admin" {
-            if msg.password == ADMIN_PASSWORD.to_string() { 
+            if msg.password == *ADMIN_PASSWORD { 
                 return Ok(vec![Claim { subject: "*".into(), permission: "*".into() }]);
             } else {
                 return Err(ServiceError::Unauthorized);
