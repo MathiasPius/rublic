@@ -11,7 +11,7 @@ use super::models::*;
 
 pub fn register(router: Scope<AppState>) -> Scope<AppState> {
     router
-        .middleware(authorize(vec![("*", "*")]))
+        .middleware(authorize(&[("*", "*")]))
         .nested("/{group_id}", |entry| {
             entry.resource("", |r| {
                 r.method(Method::GET).with(api_get_group);
@@ -43,7 +43,6 @@ fn api_get_groups(state: State<AppState>)
             join_all(groups.into_iter().map(move |group|
                 get_group(state.db.clone(), group.id)
             ))
-            .and_then(|groups| Ok(groups))
         )
     )
 }

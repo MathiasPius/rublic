@@ -62,7 +62,7 @@ impl_handler! (GetDomainByFqdn(conn, msg) for DbExecutor {
         return Err(ServiceError::InternalServerError);
     }
 
-    Ok(entry.pop().ok_or(ServiceError::NotFound("domain with given fqdn not found".into()))?)
+    Ok(entry.pop().ok_or_else(|| ServiceError::NotFound("domain with given fqdn not found".into()))?)
 });
 
 
@@ -108,7 +108,7 @@ impl_handler! (GetUserByName(conn, msg) for DbExecutor {
         .limit(1)
         .load::<User>(conn)?;
 
-    user.pop().ok_or(ServiceError::NotFound("user with that name not found".to_string()))
+    user.pop().ok_or_else(|| ServiceError::NotFound("user with that name not found".to_string()))
 });
 
 impl_handler! (GetUser(conn, msg) for DbExecutor {
@@ -117,7 +117,7 @@ impl_handler! (GetUser(conn, msg) for DbExecutor {
         .limit(1)
         .load::<User>(conn)?;
 
-    user.pop().ok_or(ServiceError::NotFound("user with that id not found".to_string()))
+    user.pop().ok_or_else(|| ServiceError::NotFound("user with that id not found".to_string()))
 });
 
 impl_handler! (GetUserPermissions(conn, msg) for DbExecutor{
@@ -151,7 +151,7 @@ impl_handler! (GetGroup(conn, msg) for DbExecutor {
         .limit(1)
         .load::<Group>(conn)?;
 
-    group.pop().ok_or(ServiceError::NotFound("group with that id not found".to_string()))
+    group.pop().ok_or_else(|| ServiceError::NotFound("group with that id not found".to_string()))
 });
 
 impl_handler! (SetGroupUsers(conn, msg) for DbExecutor {
@@ -244,7 +244,7 @@ impl_handler! (GetCertificate(conn, msg) for DbExecutor {
             .limit(1)
             .load::<Certificate>(conn)?;
 
-        return certs.pop().ok_or(ServiceError::NotFound("certificate not found".to_string()))
+        return certs.pop().ok_or_else(|| ServiceError::NotFound("certificate not found".to_string()))
     } else {
         let mut certs = certificates::table
             .filter(certificates::domain_id.eq(&msg.domain_id))
@@ -253,7 +253,7 @@ impl_handler! (GetCertificate(conn, msg) for DbExecutor {
             .limit(1)
             .load::<Certificate>(conn)?;
 
-        return certs.pop().ok_or(ServiceError::NotFound("certificate not found".to_string()))
+        return certs.pop().ok_or_else(|| ServiceError::NotFound("certificate not found".to_string()))
     }
 });
 

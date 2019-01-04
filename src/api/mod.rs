@@ -20,7 +20,7 @@ pub fn into_api_response<T: serde::Serialize>(response: impl Future<Item = T, Er
 
 pub fn register(scope: Scope<AppState>) -> Scope<AppState> {
     scope
-        .nested("/domains", |feature| domains::register(feature))
-        .nested("/users", |feature| users::register(feature))
-        .nested("/groups", |feature| groups::register(feature))
+        .nested("/domains", domains::register)
+        .nested("/users", users::register)
+        .nested("/groups", groups::register)
 }

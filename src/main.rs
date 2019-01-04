@@ -51,7 +51,7 @@ fn main() {
         .expect("DATABASE_URL must be set");
 
     let letsencrypt_archive = env::var("LETSENCRYPT_ARCHIVE")
-        .unwrap_or("/etc/letsencrypt/archive".into()).into();
+        .unwrap_or_else(|_| "/etc/letsencrypt/archive".into()).into();
 
     let sys = actix::System::new("Rublic");
 

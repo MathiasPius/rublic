@@ -15,7 +15,7 @@ use super::models::*;
 pub fn register(router: Scope<AppState>) -> Scope<AppState> {
     router
         .nested("/{fqdn}", |entry| {
-            entry.middleware(authorize(vec![("fqdn", "public")]))
+            entry.middleware(authorize(&[("fqdn", "public")]))
             .resource("", |r| {
                 r.method(Method::GET).with(api_get_domain);
                 r.method(Method::POST).with(api_create_domain);
@@ -82,7 +82,7 @@ fn api_get_domain_certificate((path, state, req): (Path<(String, i32, String)>, 
         // If the returned certificate is a private key, make sure the user 
         // is allowed to see them, before transmitting them
         .and_then(move |result| {
-            if result.is_private && !req.validate_claims(&vec![Claim { subject: "fqdn".into(), permission: "private".into()}]) {
+            if result.is_private && !req.validate_claims(&[Claim { subject: "fqdn".into(), permission: "private".into()}]) {
                 return Err(ServiceError::Unauthorized);
             }
 
@@ -106,7 +106,7 @@ fn api_get_domain_latest_certificate((path, state, req): (Path<(String, String)>
         // If the returned certificate is a private key, make sure the user 
         // is allowed to see them, before transmitting them
         .and_then(move |result| {
-            if result.is_private && !req.validate_claims(&vec![Claim { subject: "fqdn".into(), permission: "private".into()}]) {
+            if result.is_private && !req.validate_claims(&[Claim { subject: "fqdn".into(), permission: "private".into()}]) {
                 return Err(ServiceError::Unauthorized);
             }
 

@@ -18,7 +18,7 @@ impl Handler<AuthorizeUser> for AuthorizationManager {
             let admin_password = env::var("RUBLIC_ADMIN_PASSWORD")
                 .expect("No administrator password was set!");
 
-            if &msg.password == &admin_password { 
+            if msg.password == admin_password { 
                 return Ok(vec![Claim { subject: "*".into(), permission: "*".into() }]);
             } else {
                 return Err(ServiceError::Unauthorized);
@@ -28,9 +28,9 @@ impl Handler<AuthorizeUser> for AuthorizationManager {
         self.db.send(GetUserByName { friendly_name: msg.friendly_name.clone() }).flatten()
             .and_then(move |user|
                 if CryptoUtil::check_key(&msg.password, &user.hashed_key) {
-                    return Ok(user);
+                    Ok(user)
                 } else {
-                    return Err(ServiceError::Unauthorized);
+                    Err(ServiceError::Unauthorized)
                 }
             ).and_then(move |user: crate::database::models::User| {
                 self.db.send(GetUserPermissions{ id: user.id }).flatten()

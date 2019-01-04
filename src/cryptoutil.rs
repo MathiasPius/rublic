@@ -17,13 +17,13 @@ impl CryptoUtil {
             .collect()
     }
 
-    pub fn hash_key(key: &String) -> String {
+    pub fn hash_key(key: &str) -> String {
         let salted_key = format!("Rublic Salt Goes Here {}", key);
 
         pbkdf2_simple(&salted_key, 10000).unwrap()
     }
 
-    pub fn hash_string(msg: &String) -> String {
+    pub fn hash_string(msg: &str) -> String {
         let mut hasher = Sha256::new();
         hasher.input_str(msg);
 
@@ -34,7 +34,7 @@ impl CryptoUtil {
         Uuid::new_v4().to_string()
     }
 
-    pub fn check_key(key: &String, hashed_key: &String) -> bool {
+    pub fn check_key(key: &str, hashed_key: &str) -> bool {
         let salted_key = format!("Rublic Salt Goes Here {}", key);
         pbkdf2_check(&salted_key, hashed_key).unwrap_or(false)
     }

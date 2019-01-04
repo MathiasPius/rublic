@@ -13,7 +13,7 @@ use super::models::*;
 
 pub fn register(router: Scope<AppState>) -> Scope<AppState> {
     router
-        .middleware(authorize(vec![("*", "*")]))
+        .middleware(authorize(&[("*", "*")]))
         .nested("/{user_id}", |entry| {
             entry.resource("", |r| {
                 r.method(Method::GET).with(api_get_user);

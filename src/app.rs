@@ -26,7 +26,7 @@ pub fn create_app(db: Addr<DbExecutor>, certman: Addr<CertificateManager>, authm
 
         // Authorize with an empty vec will just ensure that *some* claims exist on the user
         // Whether they are adequate is decided on the endpoint
-        .middleware(authorize(vec!()))
+        .middleware(authorize(&[]))
         .scope("/api", |api| {
             crate::api::register(api)
         })

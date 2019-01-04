@@ -17,10 +17,10 @@ use self::messages::*;
 use self::models::*;
 
 pub trait ValidateClaim {
-    fn validate_claims(&self, required_claims: &Vec<Claim>) -> bool;
+    fn validate_claims(&self, required_claims: &[Claim]) -> bool;
 }
 
-fn expand_permissions(claim: &String) -> Vec<&str> {
+fn expand_permissions(claim: &str) -> Vec<&str> {
     if claim == "public" {
         return vec!["public", "private"];
     }
@@ -33,7 +33,7 @@ fn expand_permissions(claim: &String) -> Vec<&str> {
 }
 
 impl<S> ValidateClaim for HttpRequest<S> {
-    fn validate_claims(&self, required_claims: &Vec<Claim>) -> bool {
+    fn validate_claims(&self, required_claims: &[Claim]) -> bool {
         if let Some(actual_claims) = self.extensions().get::<Vec<Claim>>() {
 
             // Short-circuit in the case of the administrator
@@ -43,7 +43,7 @@ impl<S> ValidateClaim for HttpRequest<S> {
 
             let params = self.match_info();
             
-            for required_claim in required_claims.into_iter() {
+            for required_claim in required_claims.iter() {
                 if let Some(claim) = params.get(&required_claim.subject) {
                     if !expand_permissions(&required_claim.permission).into_iter().any(|permission|
                         actual_claims.contains(&Claim { 
@@ -68,7 +68,7 @@ impl<S> ValidateClaim for HttpRequest<S> {
             return false;
         }
         
-        return true;
+        true
     }
 }
 
@@ -91,16 +91,19 @@ impl Middleware<AppState> for ClaimsProviderMiddleware {
         {
             // Attempt to authorize the user, and if it worked,
             // tag the request with their claims, otherwise return unauthorized
-            if !req.state().authman.send(AuthorizeUser { 
-                friendly_name: basic.username().into(),
-                password: basic.password().unwrap_or("").into()
-             }).flatten().wait()
-             .and_then(|claims| {
-                 req.extensions_mut().insert(claims);
-                 Ok(())
-             }).is_ok() {
+            let claims = req.state().authman
+                .send(AuthorizeUser { 
+                    friendly_name: basic.username().into(),
+                    password: basic.password().unwrap_or("").into()
+                }).flatten().wait()
+                .and_then(|claims| {
+                    req.extensions_mut().insert(claims);
+                    Ok(())
+                });
+
+            if claims.is_err() {
                 return Ok(Started::Response(HttpResponse::Unauthorized().finish()));
-             }
+            }
         }
 
         Ok(Started::Done)
@@ -121,9 +124,9 @@ impl Middleware<AppState> for ClaimsCheckerMiddleware {
     }
 }
 
-pub fn authorize(claims: Vec<(&str, &str)>) -> ClaimsCheckerMiddleware {
+pub fn authorize(claims: &[(&str, &str)]) -> ClaimsCheckerMiddleware {
     ClaimsCheckerMiddleware {
-        required_claims: claims.into_iter().map(|claims| {
+        required_claims: claims.iter().map(|claims| {
             Claim {
                 subject: claims.0.into(),
                 permission: claims.1.into()

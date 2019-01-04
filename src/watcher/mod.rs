@@ -31,7 +31,7 @@ impl ArchiveWatcher {
     pub fn new(db: Addr<DbExecutor>, certman: Addr<CertificateManager>, dir: PathBuf) -> Self {
         ArchiveWatcher {
             children: HashMap::new(),
-            dir: dir,
+            dir,
             db: db.clone(),
             certman: certman.clone()
         }

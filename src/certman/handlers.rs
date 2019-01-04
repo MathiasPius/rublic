@@ -34,7 +34,7 @@ impl Handler<CertificateDiscovered> for CertificateManager {
 
         let mut bytes = Vec::new();
         if let Ok(mut file) = File::open(&path) {
-            if let Ok(_) = file.read_to_end(&mut bytes) {
+            if file.read_to_end(&mut bytes).is_ok() {
                 if let Ok(parsed_cert) = X509::from_pem(&bytes[..]) {
                     // If we could parse it as an X509 Certificate, it was not a private key.
                     is_private = false;
@@ -102,7 +102,7 @@ impl Handler<GetCertificateByPath> for CertificateManager {
     fn handle(&mut self, msg: GetCertificateByPath, _: &mut Self::Context) -> Self::Result {
         let mut bytes = Vec::new();
         if let Ok(mut file) = File::open(&msg.path) {
-            if let Ok(_) = file.read_to_end(&mut bytes) {
+            if file.read_to_end(&mut bytes).is_ok() {
                 // Verify that the file is actually a real certificate
                 //if let Ok(_) = X509::from_pem(&bytes[..]) {
                     return Ok(SingleCertificate {
