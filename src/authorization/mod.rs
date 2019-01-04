@@ -20,6 +20,18 @@ pub trait ValidateClaim {
     fn validate_claims(&self, required_claims: &Vec<Claim>) -> bool;
 }
 
+fn expand_permissions(claim: &String) -> Vec<&str> {
+    if claim == "public" {
+        return vec!["public", "private"];
+    }
+
+    if claim == "private" {
+        return vec!["private"];
+    }
+
+    return vec![];
+}
+
 impl<S> ValidateClaim for HttpRequest<S> {
     fn validate_claims(&self, required_claims: &Vec<Claim>) -> bool {
         if let Some(actual_claims) = self.extensions().get::<Vec<Claim>>() {
@@ -33,7 +45,12 @@ impl<S> ValidateClaim for HttpRequest<S> {
             
             for required_claim in required_claims.into_iter() {
                 if let Some(claim) = params.get(&required_claim.subject) {
-                    if !actual_claims.contains(&Claim { subject: claim.into(), permission: required_claim.permission.clone() }) {
+                    if !expand_permissions(&required_claim.permission).into_iter().any(|permission|
+                        actual_claims.contains(&Claim { 
+                            subject: claim.into(), 
+                            permission: permission.into() 
+                        })
+                    ) {
                         println!("user failed claims check for: {:?}, only had: {:?}", &required_claim, actual_claims);
                         return false;
                     }

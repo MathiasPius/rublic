@@ -85,6 +85,10 @@ impl_handler! (GetGroupsByUser(conn, msg) for DbExecutor {
 });
 
 impl_handler! (CreateUser(conn, msg) for DbExecutor {
+    if msg.friendly_name == "admin" {
+        return Err(ServiceError::Conflict("admin username is reserved".into()));
+    }
+
     let new_user = User {
         id: CryptoUtil::generate_uuid(),
         friendly_name: msg.friendly_name,
