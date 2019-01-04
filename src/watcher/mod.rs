@@ -10,7 +10,7 @@ use crate::certman::messages::{CertificateDiscovered, CertificateDisappeared};
 use crate::certman::CertificateManager;
 use crate::inotify::{Inotify, EventMask, WatchMask};
 
-// Listens for filesystem events
+
 pub struct ArchiveWatcher {
     pub db: Addr<DbExecutor>,
     pub certman: Addr<CertificateManager>,
