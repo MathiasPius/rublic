@@ -131,7 +131,7 @@ impl_handler! (CreateGroup(conn, msg) for DbExecutor {
     let new_group = Group {
         id: CryptoUtil::generate_uuid(),
         friendly_name: msg.friendly_name,
-        permission: "read".into()
+        permission: "public".into()
     };
 
     diesel::insert_into(groups::table)

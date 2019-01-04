@@ -11,13 +11,22 @@ pub struct NewGroupRequest {
     pub friendly_name: String
 }
 
+pub struct RawCertificate {
+    pub is_private: bool,
+    pub raw_data: Vec<u8>
+}
 
 #[derive(Serialize)]
 pub struct Certificate {
     pub version: i32,
     pub friendly_name: String,
-    pub not_before: NaiveDateTime,
-    pub not_after: NaiveDateTime
+    pub is_private: bool,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub not_before: Option<NaiveDateTime>,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub not_after: Option<NaiveDateTime>
 }
 
 #[derive(Serialize)]

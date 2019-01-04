@@ -4,8 +4,9 @@ table! {
         domain_id -> Char,
         friendly_name -> Varchar,
         path -> Mediumtext,
-        not_before -> Datetime,
-        not_after -> Datetime,
+        is_private -> Bool,
+        not_before -> Nullable<Datetime>,
+        not_after -> Nullable<Datetime>,
     }
 }
 

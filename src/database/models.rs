@@ -47,8 +47,9 @@ pub struct Certificate {
     pub domain_id: String,
     pub friendly_name: String,
     pub path: String,
-    pub not_before: NaiveDateTime,
-    pub not_after: NaiveDateTime
+    pub is_private: bool,
+    pub not_before: Option<NaiveDateTime>,
+    pub not_after: Option<NaiveDateTime>
 }
 
 #[derive(Queryable)]

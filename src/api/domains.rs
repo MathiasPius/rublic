@@ -1,14 +1,14 @@
 use actix::Addr;
-use actix_web::{State, http::Method, Scope, HttpResponse, FutureResponse, Path, AsyncResponder};
+use actix_web::{State, http::Method, Scope, HttpRequest, HttpResponse, FutureResponse, Path, AsyncResponder};
 use futures::future::Future;
 use crate::app::AppState;
 use crate::errors::ServiceError;
 use crate::database::DbExecutor;
 use crate::database::messages::*;
 use crate::certman::messages::*;
-use crate::certman::models::*;
 use crate::certman::CertificateManager;
-use crate::authorization::authorize;
+use crate::authorization::{ValidateClaim, authorize};
+use crate::authorization::models::*;
 use super::into_api_response;
 use super::models::*;
 
@@ -73,12 +73,21 @@ fn api_get_domain_certificates((fqdn, state): (Path<String>, State<AppState>))
         }))
 }
 
-fn api_get_domain_certificate((path, state): (Path<(String, i32, String)>, State<AppState>))
+fn api_get_domain_certificate((path, state, req): (Path<(String, i32, String)>, State<AppState>, HttpRequest<AppState>))
     -> FutureResponse<HttpResponse> {
 
     let (fqdn, version, friendly_name) = path.into_inner();
     
     get_domain_certificate(state.db.clone(), state.certman.clone(), (fqdn, Some(version), friendly_name))
+        // If the returned certificate is a private key, make sure the user 
+        // is allowed to see them, before transmitting them
+        .and_then(move |result| {
+            if result.is_private && !req.validate_claims(&vec![Claim { subject: "fqdn".into(), permission: "private".into()}]) {
+                return Err(ServiceError::Unauthorized);
+            }
+
+            Ok(result)
+        })
         .and_then(|result| {
             Ok(HttpResponse::Ok()
                 .content_type("application/x-pem-file")
@@ -88,12 +97,21 @@ fn api_get_domain_certificate((path, state): (Path<(String, i32, String)>, State
         .responder()
 }
 
-fn api_get_domain_latest_certificate((path, state): (Path<(String, String)>, State<AppState>))
+fn api_get_domain_latest_certificate((path, state, req): (Path<(String, String)>, State<AppState>, HttpRequest<AppState>))
     -> FutureResponse<HttpResponse> {
 
     let (fqdn, friendly_name) = path.into_inner();
     
     get_domain_certificate(state.db.clone(), state.certman.clone(), (fqdn, None, friendly_name))
+        // If the returned certificate is a private key, make sure the user 
+        // is allowed to see them, before transmitting them
+        .and_then(move |result| {
+            if result.is_private && !req.validate_claims(&vec![Claim { subject: "fqdn".into(), permission: "private".into()}]) {
+                return Err(ServiceError::Unauthorized);
+            }
+
+            Ok(result)
+        })
         .and_then(|result| {
             Ok(HttpResponse::Ok()
                 .content_type("application/x-pem-file")
@@ -104,7 +122,7 @@ fn api_get_domain_latest_certificate((path, state): (Path<(String, String)>, Sta
 }
 
 fn get_domain_certificate(db: Addr<DbExecutor>, certman: Addr<CertificateManager>, (fqdn, version, friendly_name): (String, Option<i32>, String))
-    -> impl Future<Item = SingleCertificate, Error = ServiceError>
+    -> impl Future<Item = RawCertificate, Error = ServiceError>
 {
     db.send(GetDomainByFqdn{ fqdn }).flatten()
         .and_then(move |domain|
@@ -114,9 +132,12 @@ fn get_domain_certificate(db: Addr<DbExecutor>, certman: Addr<CertificateManager
                 friendly_name
             }).flatten()
             .and_then(move |cert| {
-                certman.send(GetCertificateByPath{ path: cert.path }).flatten()
+                certman.send(GetCertificateByPath{ path: cert.path.clone() }).flatten()
                     .and_then(move |file| {
-                        Ok(file)
+                        Ok(RawCertificate {
+                            raw_data: file.raw_data,
+                            is_private: cert.is_private
+                        })
                     })
             })
         )
@@ -157,6 +178,7 @@ fn get_domain_certificates_version(db: Addr<DbExecutor>, (domain_id, version): (
             Ok(certificates.into_iter().map(|cert| Certificate {
                 version: cert.id,
                 friendly_name: cert.friendly_name,
+                is_private: cert.is_private,
                 not_before: cert.not_before,
                 not_after: cert.not_after
             }).collect())
@@ -184,6 +206,7 @@ fn get_domains_certificates(db: Addr<DbExecutor>, id: String)
                 Certificate {
                     version: cert.id,
                     friendly_name: cert.friendly_name,
+                    is_private: cert.is_private,
                     not_after: cert.not_after,
                     not_before: cert.not_before
                 }

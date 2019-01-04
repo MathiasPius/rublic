@@ -4,7 +4,7 @@ use futures::Future;
 use std::io::Read;
 use std::fs::File;
 use openssl::x509::X509;
-use chrono::{NaiveDate, NaiveDateTime};
+use chrono::{NaiveDateTime};
 use crate::errors::ServiceError;
 use crate::database::messages::{AddCertificateToDomain, GetDomainByFqdn, DeleteCertificateByPath};
 use crate::database::models::Certificate;
@@ -28,17 +28,21 @@ impl Handler<CertificateDiscovered> for CertificateManager {
 
 
         // This feels like a really dirty way to parse dates
-        let mut not_before: NaiveDateTime = NaiveDate::from_ymd(1970, 1, 1).and_hms(0, 0, 0);
-        let mut not_after: NaiveDateTime = NaiveDate::from_ymd(1970, 1, 1).and_hms(0, 0, 0);
+        let mut not_before = None;
+        let mut not_after = None;
+        let mut is_private = true;
 
         let mut bytes = Vec::new();
         if let Ok(mut file) = File::open(&path) {
             if let Ok(_) = file.read_to_end(&mut bytes) {
                 if let Ok(parsed_cert) = X509::from_pem(&bytes[..]) {
+                    // If we could parse it as an X509 Certificate, it was not a private key.
+                    is_private = false;
+
                     let unparsed_before = &format!("{}", &parsed_cert.not_before());
                     let unparsed_after = &format!("{}", &parsed_cert.not_after());
-                    not_before = NaiveDateTime::parse_from_str(unparsed_before, "%b %e %T %Y GMT").unwrap();
-                    not_after = NaiveDateTime::parse_from_str(unparsed_after, "%b %e %T %Y GMT").unwrap();
+                    not_before = Some(NaiveDateTime::parse_from_str(unparsed_before, "%b %e %T %Y GMT").unwrap());
+                    not_after = Some(NaiveDateTime::parse_from_str(unparsed_after, "%b %e %T %Y GMT").unwrap());
                 }
             }
         };
@@ -66,6 +70,7 @@ impl Handler<CertificateDiscovered> for CertificateManager {
                         domain_id: domain.id,
                         friendly_name: format!("{}.{}", certname, fileext),
                         path: path.to_string_lossy().into(),
+                        is_private,
                         not_before,
                         not_after
                     };
@@ -99,11 +104,11 @@ impl Handler<GetCertificateByPath> for CertificateManager {
         if let Ok(mut file) = File::open(&msg.path) {
             if let Ok(_) = file.read_to_end(&mut bytes) {
                 // Verify that the file is actually a real certificate
-                if let Ok(_) = X509::from_pem(&bytes[..]) {
+                //if let Ok(_) = X509::from_pem(&bytes[..]) {
                     return Ok(SingleCertificate {
                         raw_data: bytes
                     });
-                }
+                //}
             }
         };
 

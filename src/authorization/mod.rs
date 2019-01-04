@@ -16,6 +16,45 @@ use crate::app::AppState;
 use self::messages::*;
 use self::models::*;
 
+pub trait ValidateClaim {
+    fn validate_claims(&self, required_claims: &Vec<Claim>) -> bool;
+}
+
+impl<S> ValidateClaim for HttpRequest<S> {
+    fn validate_claims(&self, required_claims: &Vec<Claim>) -> bool {
+        if let Some(actual_claims) = self.extensions().get::<Vec<Claim>>() {
+
+            // Short-circuit in the case of the administrator
+            if actual_claims.contains(&Claim { subject: "*".into(), permission: "*".into()}) {
+                return true;
+            }
+
+            let params = self.match_info();
+            
+            for required_claim in required_claims.into_iter() {
+                if let Some(claim) = params.get(&required_claim.subject) {
+                    if !actual_claims.contains(&Claim { subject: claim.into(), permission: required_claim.permission.clone() }) {
+                        println!("user failed claims check for: {:?}, only had: {:?}", &required_claim, actual_claims);
+                        return false;
+                    }
+                } else {
+                    println!("authorizing against unknown parameter: {}", &required_claim.subject);
+                    // If the parameter we're trying to authorize against isn't in the path,
+                    // err on the side of caution and abort
+                    return false;
+                }
+            }
+        } else {
+            // If we get to this point, it means that no Vec<Claim> extension has been
+            // registered on the request object, meaning the user has not been authorized.
+            // Since this Middleware has been triggered, *some* authorization was intended
+            return false;
+        }
+        
+        return true;
+    }
+}
+
 pub struct AuthorizationManager {
     pub db: Addr<DbExecutor>
 }
@@ -57,37 +96,11 @@ pub struct ClaimsCheckerMiddleware {
 
 impl Middleware<AppState> for ClaimsCheckerMiddleware {
     fn start(&self, req: &HttpRequest<AppState>) -> Result<Started> {
-        if let Some(actual_claims) = req.extensions().get::<Vec<Claim>>() {
-
-            // If we're the admin, short-circuit checks
-            if actual_claims.contains(&Claim { subject: "*".into(), permission: "*".into() }) {
-                return Ok(Started::Done)
-            }
-
-            let params = req.match_info();
-
-            // Make sure user has all required claims
-            for required_claim in &self.required_claims {
-                if let Some(claim) = params.get(&required_claim.subject) {
-                    if !actual_claims.contains(&Claim { subject: claim.into(), permission: required_claim.permission.clone() }) {
-                        return Ok(Started::Response(HttpResponse::Unauthorized().finish()));
-                    }
-                } else {
-                    // If the parameter we're trying to authorize against isn't in the path,
-                    // err on the side of caution and abort
-                    return Ok(Started::Response(HttpResponse::Unauthorized().finish()));
-                }
-            }
+        if !req.validate_claims(&self.required_claims) {
+            Ok(Started::Response(HttpResponse::Unauthorized().finish()))
         } else {
-            // If we get to this poinrt, it means that no Vec<Claim> extension has been
-            // registered on the request object, meaning the user has not been authorized.
-            // Since this Middleware has been triggered, *some* authorization was intended
-            return Ok(Started::Response(HttpResponse::Unauthorized().finish()));
+            Ok(Started::Done)
         }
-
-        // If all the required_claims have been found in the actual_claims,
-        // we've successfully been cleared
-        Ok(Started::Done)
     }
 }
 
