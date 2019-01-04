@@ -2,19 +2,54 @@ pub mod models;
 pub mod messages;
 mod handlers;
 
+use std::env;
+use chrono::Duration;
 use futures::Future;
 use actix::{Actor, Addr, Context};
 use actix_web::{HttpRequest, HttpResponse, Result, FromRequest};
 use actix_web::middleware::{Middleware, Started};
 use actix_web_httpauth::extractors::{
     basic::{BasicAuth, Config as BasicConfig},
-    //bearer::{BearerAuth, Config as BearerConfig}
+    bearer::{BearerAuth, Config as BearerConfig}
 };
+use jwt::{Header, Algorithm, Validation};
 
 use crate::database::DbExecutor;
 use crate::app::AppState;
 use self::messages::*;
 use self::models::*;
+
+
+lazy_static! {
+    pub static ref JWT_HEADER: Header = Header::new(Algorithm::HS512);
+
+    pub static ref JWT_VALIDATION: Validation = Validation {
+        leeway: 5,
+        validate_exp: true,
+        validate_iat: true,
+        validate_nbf: true,
+        aud: Some(JWT_AUDIENCE.to_string().into()),
+        iss: Some(JWT_ISSUER.to_string().into()),
+        sub: None,
+        algorithms: vec![Algorithm::HS512]
+    };
+
+    static ref JWT_SHARED_SECRET: String = std::env::var("RUBLIC_SHARED_SECRET")
+        .expect("RUBLIC_SHARED_SECRET environment variable is not defined!");
+
+    static ref JWT_AUDIENCE: String = env::var("RUBLIC_JWT_AUDIENCE")
+        .unwrap_or("rublic-audience".into());
+
+    static ref JWT_ISSUER: String = env::var("RUBLIC_JWT_ISSUER")
+        .unwrap_or("rublic-issuer".into());
+
+    pub static ref JWT_ACCESS_LIFETIME: Duration = Duration::hours(1);
+    pub static ref JWT_REFRESH_LIFETIME: Duration = Duration::days(30);
+
+    static ref ADMIN_PASSWORD: String = env::var("RUBLIC_ADMIN_PASSWORD")
+        .expect("RUBLIC_ADMIN_PASSWORD was not defined!");
+}
+
 
 pub trait ValidateClaim {
     fn validate_claims(&self, required_claims: &[Claim]) -> bool;
@@ -85,16 +120,27 @@ pub struct ClaimsProviderMiddleware { }
 
 impl Middleware<AppState> for ClaimsProviderMiddleware {
     fn start(&self, req: &HttpRequest<AppState>) -> Result<Started> {
-
-        let config = BasicConfig::default();
-        if let Ok(basic) = BasicAuth::from_request(&req, &config)
-        {
+;
+        if let Ok(basic) = BasicAuth::from_request(&req, &BasicConfig::default()) {
             // Attempt to authorize the user, and if it worked,
             // tag the request with their claims, otherwise return unauthorized
             let claims = req.state().authman
                 .send(AuthorizeUser { 
                     friendly_name: basic.username().into(),
                     password: basic.password().unwrap_or("").into()
+                }).flatten().wait()
+                .and_then(|claims| {
+                    req.extensions_mut().insert(claims);
+                    Ok(())
+                });
+
+            if claims.is_err() {
+                return Ok(Started::Response(HttpResponse::Unauthorized().finish()));
+            }
+        } else if let Ok(bearer) = BearerAuth::from_request(&req, &BearerConfig::default()) {
+            let claims = req.state().authman
+                .send(AuthorizeToken { 
+                    token: bearer.token().into()
                 }).flatten().wait()
                 .and_then(|claims| {
                     req.extensions_mut().insert(claims);

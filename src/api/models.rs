@@ -79,6 +79,13 @@ pub struct RefreshGrant {
     pub refresh_token: String
 }
 
+#[derive(Deserialize)]
+#[serde(untagged)]
+pub enum Grant {
+    Password(PasswordGrant),
+    Refresh(RefreshGrant)
+}
+
 #[derive(Serialize)]
 pub struct TokenResponse {
     pub token_type: String,

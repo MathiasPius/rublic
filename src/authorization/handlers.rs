@@ -1,41 +1,13 @@
-use std::env;
 use chrono::Utc;
 use actix::Handler;
 use futures::Future;
-use jwt::{encode, decode, Header, Algorithm, Validation};
+use jwt::{encode, decode};
 use crate::errors::ServiceError;
 use crate::cryptoutil::CryptoUtil;
 use crate::database::messages::*;
 use super::models::*;
 use super::messages::*;
-use super::AuthorizationManager;
-
-lazy_static! {
-    static ref JWT_HEADER: Header = Header::new(Algorithm::HS512);
-
-    static ref JWT_VALIDATION: Validation = Validation {
-        leeway: 5,
-        validate_exp: true,
-        validate_iat: true,
-        validate_nbf: true,
-        aud: Some(JWT_AUDIENCE.to_string().into()),
-        iss: Some(JWT_ISSUER.to_string().into()),
-        sub: None,
-        algorithms: vec![Algorithm::HS512]
-    };
-
-    static ref JWT_SHARED_SECRET: String = std::env::var("RUBLIC_SHARED_SECRET")
-        .expect("RUBLIC_SHARED_SECRET environment variable is not defined!");
-
-    static ref JWT_AUDIENCE: String = env::var("RUBLIC_JWT_AUDIENCE")
-        .unwrap_or("rublic-audience".into());
-
-    static ref JWT_ISSUER: String = env::var("RUBLIC_JWT_ISSUER")
-        .unwrap_or("rublic-issuer".into());
-
-    static ref ADMIN_PASSWORD: String = env::var("RUBLIC_ADMIN_PASSWORD")
-        .expect("RUBLIC_ADMIN_PASSWORD was not defined!");
-}
+use super::{ADMIN_PASSWORD, JWT_SHARED_SECRET, JWT_VALIDATION, JWT_ISSUER, JWT_AUDIENCE, JWT_HEADER, AuthorizationManager};
 
 impl Handler<AuthorizeUser> for AuthorizationManager {
     type Result = Result<Vec<Claim>, ServiceError>;
@@ -77,9 +49,9 @@ impl Handler<AuthorizeToken> for AuthorizationManager {
 
     fn handle(&mut self, msg: AuthorizeToken, _: &mut Self::Context) -> Self::Result {
 
-        decode(&msg.token, JWT_SHARED_SECRET.as_ref(), &JWT_VALIDATION)
+        decode::<Token>(&msg.token, JWT_SHARED_SECRET.as_ref(), &JWT_VALIDATION)
             .map_err(|e| e.into())
-            .and_then(|token| Ok(token.claims))
+            .and_then(|token| Ok(token.claims.claims))
     }
 }
 
@@ -99,5 +71,27 @@ impl Handler<BuildTokenFromClaims> for AuthorizationManager {
         };
 
         encode::<Token>(&JWT_HEADER, &token, JWT_SHARED_SECRET.as_ref()).map_err(|e| e.into())
+    }
+}
+
+impl Handler<RefreshToken> for AuthorizationManager {
+    type Result = Result<String, ServiceError>;
+
+    fn handle(&mut self, msg: RefreshToken, _: &mut Self::Context) -> Self::Result {
+        decode::<Token>(&msg.token, JWT_SHARED_SECRET.as_ref(), &JWT_VALIDATION)
+            .map_err(|e| e.into())
+            .and_then(|token| {
+                let now = Utc::now().timestamp();
+                let token = Token {
+                    iat: now,
+                    nbf: now,
+                    exp: core::cmp::min(now + msg.lifetime.num_seconds(), token.claims.exp),
+                    aud: JWT_AUDIENCE.to_string(),
+                    iss: JWT_ISSUER.to_string(),
+                    claims: token.claims.claims
+                };
+
+                encode::<Token>(&JWT_HEADER, &token, JWT_SHARED_SECRET.as_ref()).map_err(|e| e.into())
+            })
     }
 }
