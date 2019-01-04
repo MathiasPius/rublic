@@ -1,6 +1,3 @@
-pub mod messages;
-mod handlers;
-
 use std::fs::{read_dir};
 use std::path::PathBuf;
 use std::collections::HashMap;
