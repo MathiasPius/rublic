@@ -65,3 +65,24 @@ pub struct PluggableUser {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub groups: Option<Vec<PluggableGroup>>
 }
+
+#[derive(Deserialize)]
+pub struct PasswordGrant {
+    pub grant_type: String,
+    pub username: String,
+    pub password: String
+}
+
+#[derive(Deserialize)]
+pub struct RefreshGrant {
+    pub grant_type: String,
+    pub refresh_token: String
+}
+
+#[derive(Serialize)]
+pub struct TokenResponse {
+    pub token_type: String,
+    pub expires_in: i64,
+    pub access_token: String,
+    pub refresh_token: String
+}

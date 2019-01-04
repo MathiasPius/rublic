@@ -2,6 +2,7 @@
 use serde_derive::{Serialize, Deserialize};
 use actix_web::{error::ResponseError, HttpResponse};
 use diesel::result::{Error, DatabaseErrorKind};
+use std::convert::From;
 
 #[allow(dead_code)]
 #[derive(Fail, Debug)]
@@ -44,13 +45,13 @@ impl ResponseError for ServiceError {
     }
 }
 
-impl std::convert::From<actix::MailboxError> for ServiceError {
+impl From<actix::MailboxError> for ServiceError {
     fn from(_: actix::MailboxError) -> Self {
         ServiceError::InternalServerError
     }
 }
 
-impl std::convert::From<diesel::result::Error> for ServiceError {
+impl From<diesel::result::Error> for ServiceError {
     fn from(e: diesel::result::Error) -> Self {
         match e {
             Error::DatabaseError(kind, info) => match kind {
@@ -64,8 +65,14 @@ impl std::convert::From<diesel::result::Error> for ServiceError {
     }
 }
 
-impl std::convert::From<std::io::Error> for ServiceError {
+impl From<std::io::Error> for ServiceError {
     fn from(_e: std::io::Error) -> Self {
+        ServiceError::InternalServerError
+    }
+}
+
+impl From<jwt::errors::Error> for ServiceError {
+    fn from(_e: jwt::errors::Error) -> Self {
         ServiceError::InternalServerError
     }
 }

@@ -15,6 +15,7 @@ extern crate rand;
 extern crate inotify;
 extern crate regex;
 extern crate openssl;
+extern crate jsonwebtoken as jwt;
 #[macro_use] extern crate diesel;
 #[macro_use] extern crate failure;
 #[macro_use] extern crate lazy_static;

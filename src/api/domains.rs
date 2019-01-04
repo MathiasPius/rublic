@@ -17,28 +17,28 @@ pub fn register(router: Scope<AppState>) -> Scope<AppState> {
         .nested("/{fqdn}", |entry| {
             entry.middleware(authorize(&[("fqdn", "public")]))
             .resource("", |r| {
-                r.method(Method::GET).with(api_get_domain);
-                r.method(Method::POST).with(api_create_domain);
+                r.method(Method::GET).with_async(api_get_domain);
+                r.method(Method::POST).with_async(api_create_domain);
             })
             .nested("/certs", |certs| {
                 certs.nested("/latest", |latest| {
                     latest.resource("/{filename}", |r| {
-                        r.method(Method::GET).with(api_get_domain_latest_certificate);
+                        r.method(Method::GET).with_async(api_get_domain_latest_certificate);
                     })
                     .resource("", |r| {
-                        r.method(Method::GET).with(api_get_domain_latest_certificates_version);
+                        r.method(Method::GET).with_async(api_get_domain_latest_certificates_version);
                     })
                 })
                 .nested("/{version}", |version| {
                     version.resource("/{filename}", |r| {
-                        r.method(Method::GET).with(api_get_domain_certificate);
+                        r.method(Method::GET).with_async(api_get_domain_certificate);
                     })
                     .resource("", |r| {
-                        r.method(Method::GET).with(api_get_domain_certificates_version);
+                        r.method(Method::GET).with_async(api_get_domain_certificates_version);
                     })
                 })
                 .resource("", |r| {
-                    r.method(Method::GET).with(api_get_domain_certificates);
+                    r.method(Method::GET).with_async(api_get_domain_certificates);
                 })
             })
         })

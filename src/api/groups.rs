@@ -14,24 +14,24 @@ pub fn register(router: Scope<AppState>) -> Scope<AppState> {
         .middleware(authorize(&[("*", "*")]))
         .nested("/{group_id}", |entry| {
             entry.resource("", |r| {
-                r.method(Method::GET).with(api_get_group);
+                r.method(Method::GET).with_async(api_get_group);
             })
             .nested("/users", |users| {
                 users.resource("", |r| {
-                    r.method(Method::PUT).with(api_set_group_users);
-                    r.method(Method::GET).with(api_get_group_users);
+                    r.method(Method::PUT).with_async(api_set_group_users);
+                    r.method(Method::GET).with_async(api_get_group_users);
                 })
             })
             .nested("/domains", |domains| {
                 domains.resource("", |r| {
-                    r.method(Method::PUT).with(api_set_group_domains);
-                    r.method(Method::GET).with(api_get_group_domains);
+                    r.method(Method::PUT).with_async(api_set_group_domains);
+                    r.method(Method::GET).with_async(api_get_group_domains);
                 })
             })
         })
         .resource("", |r| {
-            r.method(Method::POST).with(api_create_group);
-            r.method(Method::GET).with(api_get_groups);
+            r.method(Method::POST).with_async(api_create_group);
+            r.method(Method::GET).with_async(api_get_groups);
         })
 }
 

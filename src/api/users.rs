@@ -16,11 +16,11 @@ pub fn register(router: Scope<AppState>) -> Scope<AppState> {
         .middleware(authorize(&[("*", "*")]))
         .nested("/{user_id}", |entry| {
             entry.resource("", |r| {
-                r.method(Method::GET).with(api_get_user);
+                r.method(Method::GET).with_async(api_get_user);
             })
         })
         .resource("", |r| {
-            r.method(Method::POST).with(api_create_user);
+            r.method(Method::POST).with_async(api_create_user);
         })
 }
 
