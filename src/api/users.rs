@@ -53,6 +53,7 @@ fn get_user(db: Addr<DbExecutor>, id: String)
 
     db.clone()
         .send(GetUser { id }).flatten()
+        .map_err(|e| e.into())
         .and_then(move |user| {
             get_user_groups(db.clone(), user.id.clone())
                 .and_then(|groups| {

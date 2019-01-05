@@ -8,6 +8,14 @@ use super::models::*;
 use super::messages::*;
 use super::errors::Error;
 
+fn exactly_one<T>(mut items: Vec<T>, name: &str) -> Result<T, Error> {
+    match items.len() {
+        0 => Err(Error::DataNotFound(format!("{} not found", name))),
+        1 => Ok(items.pop().unwrap()),
+        _ => Err(Error::TooManyresults(format!("multiple {}s found", name)))
+    }
+}
+
 // Simple rule for wrapping Handler implementations
 macro_rules! impl_handler {   
     ($message:ident ( $conn:ident, $msg:ident, $ctx:ident ) for $actor:ty $blk:block) => {
@@ -78,11 +86,7 @@ impl Handler<GetDomainByFqdn> for DbExecutor {
                 .filter(domains::fqdn.eq(&msg.fqdn))
                 .load::<Domain>(conn)
                 .map_err(|e| e.into())
-                .and_then(move |mut found| match found.len() {
-                    0 => Err(Error::DataNotFound("domain not found".into())),
-                    1 => Ok(found.pop().unwrap()),
-                    _ => Err(Error::TooManyresults("multiple domains found".into()))
-                })
+                .and_then(move |f| exactly_one(f, "domain"))
         })
     }
 }
@@ -141,23 +145,33 @@ impl Handler<CreateUser> for DbExecutor {
     }
 }
 
-impl_handler! (GetUserByName(conn, msg) for DbExecutor {
-    let mut user = users::table
-        .filter(users::friendly_name.eq(&msg.friendly_name))
-        .limit(1)
-        .load::<User>(conn)?;
+impl Handler<GetUserByName> for DbExecutor {
+    type Result = Result<User, Error>;
 
-    user.pop().ok_or_else(|| ServiceError::NotFound("user with that name not found".to_string()))
-});
+    fn handle(&mut self, msg: GetUserByName, _: &mut Self::Context) -> Self::Result {
+        self.with_connection(|conn| {
+            users::table
+                .filter(users::friendly_name.eq(&msg.friendly_name))
+                .load::<User>(conn)
+                .map_err(|e| e.into())
+                .and_then(move |f| exactly_one(f, "user"))
+        })
+    }
+}
 
-impl_handler! (GetUser(conn, msg) for DbExecutor {
-    let mut user = users::table
-        .filter(users::id.eq(&msg.id))
-        .limit(1)
-        .load::<User>(conn)?;
+impl Handler<GetUser> for DbExecutor {
+    type Result = Result<User, Error>;
 
-    user.pop().ok_or_else(|| ServiceError::NotFound("user with that id not found".to_string()))
-});
+    fn handle(&mut self, msg: GetUser, _: &mut Self::Context) -> Self::Result {
+        self.with_connection(|conn| {
+            users::table
+                .filter(users::id.eq(&msg.id))
+                .load::<User>(conn)
+                .map_err(|e| e.into())
+                .and_then(move |f| exactly_one(f, "user"))
+        })
+    }
+}
 
 impl_handler! (GetUserPermissions(conn, msg) for DbExecutor{
     user_group_mappings::table

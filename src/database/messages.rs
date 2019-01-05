@@ -6,8 +6,8 @@ actor_command_new! (DeleteDomain(fqdn: String) -> Result<(), Error>);
 actor_command_new! (GetDomainByFqdn(fqdn: String) -> Result<Domain, Error>);
 
 actor_command_new! (CreateUser(friendly_name: String, hashed_key: String) -> Result<User, Error>);
-actor_command! (GetUserByName(friendly_name: String) -> User);
-actor_command! (GetUser(id: String) -> User);
+actor_command_new! (GetUserByName(friendly_name: String) -> Result<User, Error>);
+actor_command_new! (GetUser(id: String) -> Result<User, Error>);
 actor_command! (GetUserPermissions(id: String) -> Vec<DomainPermission>);
 
 actor_command! (CreateGroup(friendly_name: String) -> Group);

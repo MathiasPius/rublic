@@ -25,6 +25,7 @@ impl Handler<AuthorizeUser> for AuthorizationManager {
         }
 
         self.db.send(GetUserByName { friendly_name: msg.friendly_name.clone() }).flatten()
+            .map_err(|e| e.into())
             .and_then(move |user|
                 if CryptoUtil::check_key(&msg.password, &user.hashed_key) {
                     Ok(user)
