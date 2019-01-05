@@ -16,8 +16,14 @@ pub enum Error {
     #[fail(display = "File Error: {}", _0)]
     FileError(std::io::Error),
 
+    #[fail(display = "Parse Error")]
+    ParseError,
+
     #[fail(display = "Invalid Certificate: {}", _0)]
     InvalidCertificate(String),
+
+    #[fail(display = "Database Error: {}", _0)]
+    DatabaseError(crate::errors::ServiceError),
 
     #[fail(display = "Unknown Error")]
     Unknown
@@ -25,6 +31,13 @@ pub enum Error {
 
 impl From<actix::MailboxError> for Error {
     fn from(_: actix::MailboxError) -> Self {
+        Error::Unknown
+    }
+}
+
+// This really should be a DatabaseError implementaiton thing..?
+impl From<crate::errors::ServiceError> for Error {
+    fn from(_: crate::errors::ServiceError) -> Self {
         Error::Unknown
     }
 }
