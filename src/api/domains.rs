@@ -55,6 +55,7 @@ fn api_create_domain((fqdn, state): (Path<String>, State<AppState>))
             groups: None,
             latest_certs: None
         }))
+        .from_err()
     )
 }
 

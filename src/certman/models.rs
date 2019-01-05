@@ -18,18 +18,3 @@ pub enum PemFileContents {
     PrivateKey(PrivateKey),
     PublicCertificate(PublicCertificate)
 }
-
-/*
-#[derive(Identifiable, Queryable, Insertable, Associations, Debug)]
-#[primary_key(domain_id, id, friendly_name)]
-pub struct Certificate {
-    pub id: i32,
-    pub domain_id: String,
-    pub friendly_name: String,
-    pub path: String,
-    pub is_private: bool,
-    pub not_before: Option<NaiveDateTime>,
-    pub not_after: Option<NaiveDateTime>
-}
-
-*/

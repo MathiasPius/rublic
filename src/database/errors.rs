@@ -4,17 +4,26 @@ use diesel::result::{
 
 #[derive(Fail, Debug)]
 pub enum Error {
-    #[fail(display = "Data Conflict")]
+    #[fail(display = "Data Conflict: {}", _0)]
     DataConflict(String),
 
-    #[fail(display = "Data Not Found")]
+    #[fail(display = "Data Not Found: {}", _0)]
     DataNotFound(String),
 
-    #[fail(display = "Incorrect Query")]
+    #[fail(display = "Incorrect Query: {}", _0)]
     DataIncorrect(String),
 
+    #[fail(display = "Diesel Error: {}", _0)]
+    DieselError(diesel::result::Error),
+
     #[fail(display = "Unknown Error")]
-    Unknown(diesel::result::Error)
+    Unknown
+}
+
+impl From<actix::MailboxError> for Error {
+    fn from(_: actix::MailboxError) -> Self {
+        Error::Unknown
+    }
 }
 
 impl From<diesel::result::Error> for Error {
@@ -27,7 +36,7 @@ impl From<diesel::result::Error> for Error {
             QueryBuilderError(err) => Error::DataIncorrect((*err).to_string()),
             SerializationError(err) => Error::DataIncorrect((*err).to_string()),
             DeserializationError(err) => Error::DataIncorrect((*err).to_string()),
-            _ => Error::Unknown(e)
+            _ => Error::DieselError(e)
         }
     }
 }

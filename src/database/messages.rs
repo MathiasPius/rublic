@@ -1,6 +1,7 @@
 use super::models::*;
+use super::errors::Error;
 
-actor_command! (CreateDomain(fqdn: String) -> Domain);
+actor_command_new! (CreateDomain(fqdn: String) -> Result<Domain, Error>);
 actor_command! (DeleteDomain(fqdn: String) -> usize);
 actor_command! (GetDomainByFqdn(fqdn: String) -> Domain);
 

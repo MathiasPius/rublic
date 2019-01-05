@@ -87,10 +87,8 @@ impl Handler<CertificateDiscovered> for CertificateManager {
         let path_str: String = path.to_string_lossy().into();
         let filename: String = path.file_name().unwrap().to_string_lossy().into();
 
-         parse_filename(&filename)
-        .and_then(|(friendly_name, version)| {
-         read_pem_file(&path_str)
-        .and_then(|contents| {
+        parse_filename(&filename).and_then(|(friendly_name, version)| {
+        read_pem_file(&path_str).and_then(|contents| {
             return self.db.send(GetDomainByFqdn { fqdn }).flatten()
                 .and_then(|domain| {
                     match contents {

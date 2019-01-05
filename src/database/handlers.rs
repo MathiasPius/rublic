@@ -1,9 +1,11 @@
 use diesel::{prelude::*};
+use actix::Handler;
 use crate::database::DbExecutor;
 use crate::errors::ServiceError;
 use crate::cryptoutil::CryptoUtil;
 use super::models::*;
 use super::messages::*;
+use super::errors::Error;
 
 // Simple rule for wrapping Handler implementations
 macro_rules! impl_handler {   
@@ -30,19 +32,26 @@ macro_rules! impl_handler {
 }
 
 
-impl_handler! (CreateDomain(conn, msg) for DbExecutor {
-    let new_domain = Domain {
-        id: CryptoUtil::generate_uuid(),
-        hashed_fqdn: CryptoUtil::hash_string(&msg.fqdn),
-        fqdn: msg.fqdn,
-    };
+impl Handler<CreateDomain> for DbExecutor {
+    type Result = Result<Domain, Error>;
 
-    diesel::insert_into(domains::table)
-        .values(&new_domain)
-        .execute(conn)?;
+    fn handle(&mut self, msg: CreateDomain, _: &mut Self::Context) -> Self::Result {
+        use crate::schema::*;
+        self.with_connection(|conn| {
+            let domain = Domain {
+                id: CryptoUtil::generate_uuid(),
+                hashed_fqdn: CryptoUtil::hash_string(&msg.fqdn),
+                fqdn: msg.fqdn,
+            };
 
-    Ok(new_domain)
-});
+            diesel::insert_into(domains::table)
+                .values(&domain)
+                .execute(conn)?;
+
+            Ok(domain)
+        })
+    }
+}
 
 impl_handler! (DeleteDomain(conn, msg) for DbExecutor {
     diesel::delete(domains::table)
