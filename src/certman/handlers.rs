@@ -45,7 +45,7 @@ impl Handler<CertificateDiscovered> for CertificateManager {
         if let Some(names) = CERT_PATTERN.captures(&filename) {
             if names.len() != 4 {
                 println!("DW: certificate name {:?} failed pattern matching", &path_str);
-                return Err(Error::InvalidPath(path_str));
+                return Err(Error::Unknown);
             }
 
             let (certname, id, fileext) = (
@@ -90,8 +90,7 @@ impl Handler<CertificateDisappeared> for CertificateManager {
     fn handle(&mut self, msg: CertificateDisappeared, _: &mut Self::Context) -> Self::Result {
         self.db.send(DeleteCertificateByPath{ 
                 path: msg.path.to_string_lossy().into()  
-            }).flatten().wait()
-            .map_err(|e| Error::Unknown);
+            }).flatten().wait();
 
         Ok(0)
     }
@@ -102,17 +101,17 @@ impl Handler<GetCertificateByPath> for CertificateManager {
 
     fn handle(&mut self, msg: GetCertificateByPath, _: &mut Self::Context) -> Self::Result {
         let mut bytes = Vec::new();
-        if let Ok(mut file) = File::open(&msg.path) {
-            if file.read_to_end(&mut bytes).is_ok() {
-                // Verify that the file is actually a real certificate
-                //if let Ok(_) = X509::from_pem(&bytes[..]) {
-                    return Ok(SingleCertificate {
+        
+        match File::open(&msg.path) {
+            Ok(mut file) => {
+                match file.read_to_end(&mut bytes) {
+                    Ok(_) => Ok(SingleCertificate {
                         raw_data: bytes
-                    });
-                //}
-            }
-        };
-
-        Err(Error::Unknown)
+                    }),
+                    Err(e) => Err(Error::FileError(e))
+                }
+            },
+            Err(e) => Err(Error::FileError(e))
+        }
     }
 }

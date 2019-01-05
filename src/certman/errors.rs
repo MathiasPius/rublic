@@ -13,11 +13,8 @@ pub enum Error {
     #[fail(display = "Unknown Error")]
     Unknown(diesel::result::Error)
     */
-    #[fail(display = "Invalid Path: {}", _0)]
-    InvalidPath(String),
-
-    #[fail(display = "Invalid File: {}", _0)]
-    InvalidFile(String),
+    #[fail(display = "File Error: {}", _0)]
+    FileError(std::io::Error),
 
     #[fail(display = "Invalid Certificate: {}", _0)]
     InvalidCertificate(String),
@@ -27,7 +24,7 @@ pub enum Error {
 }
 
 impl From<actix::MailboxError> for Error {
-    fn from(e: actix::MailboxError) -> Self {
+    fn from(_: actix::MailboxError) -> Self {
         Error::Unknown
     }
 }
