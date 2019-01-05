@@ -1,5 +1,6 @@
 use diesel::{prelude::*};
 use actix::Handler;
+use crate::schema::*;
 use crate::database::DbExecutor;
 use crate::errors::ServiceError;
 use crate::cryptoutil::CryptoUtil;
@@ -30,8 +31,6 @@ macro_rules! impl_handler {
         impl_handler! ($message( $conn, _msg, _ctx) for $actor $blk);
     }
 }
-
-use crate::schema::*;
 
 impl Handler<CreateDomain> for DbExecutor {
     type Result = Result<Domain, Error>;
@@ -88,41 +87,59 @@ impl Handler<GetDomainByFqdn> for DbExecutor {
     }
 }
 
-impl_handler! (GetGroupsByDomain(conn, msg) for DbExecutor {
-    domain_group_mappings::table
-        .filter(domain_group_mappings::domain_id.eq(&msg.id))
-        .inner_join(groups::table)
-        .select((groups::id, groups::friendly_name, groups::permission))
-        .load::<Group>(conn)
-        .map_err(|e| e.into())
-});
+impl Handler<GetGroupsByDomain> for DbExecutor {
+    type Result = Result<Vec<Group>, Error>;
 
-impl_handler! (GetGroupsByUser(conn, msg) for DbExecutor {
-    user_group_mappings::table
-        .filter(user_group_mappings::user_id.eq(&msg.id))
-        .inner_join(groups::table)
-        .select((groups::id, groups::friendly_name, groups::permission))
-        .load::<Group>(conn)
-        .map_err(|e| e.into())    
-});
-
-impl_handler! (CreateUser(conn, msg) for DbExecutor {
-    if msg.friendly_name == "admin" {
-        return Err(ServiceError::Conflict("admin username is reserved".into()));
+    fn handle(&mut self, msg: GetGroupsByDomain, _: &mut Self::Context) -> Self::Result {
+        self.with_connection(|conn| {
+            domain_group_mappings::table
+                .filter(domain_group_mappings::domain_id.eq(&msg.id))
+                .inner_join(groups::table)
+                .select((groups::id, groups::friendly_name, groups::permission))
+                .load::<Group>(conn)
+                .map_err(|e| e.into())
+        })
     }
+}
 
-    let new_user = User {
-        id: CryptoUtil::generate_uuid(),
-        friendly_name: msg.friendly_name,
-        hashed_key: msg.hashed_key
-    };
+impl Handler<GetGroupsByUser> for DbExecutor {
+    type Result = Result<Vec<Group>, Error>;
 
-    diesel::insert_into(users::table)
-        .values(&new_user)
-        .execute(conn)?;
+    fn handle(&mut self, msg: GetGroupsByUser, _: &mut Self::Context) -> Self::Result {
+        self.with_connection(|conn| {
+            user_group_mappings::table
+            .filter(user_group_mappings::user_id.eq(&msg.id))
+            .inner_join(groups::table)
+            .select((groups::id, groups::friendly_name, groups::permission))
+            .load::<Group>(conn)
+            .map_err(|e| e.into())    
+        })
+    }
+}
 
-    Ok(new_user)
-});
+impl Handler<CreateUser> for DbExecutor {
+    type Result = Result<User, Error>;
+
+    fn handle(&mut self, msg: CreateUser, _: &mut Self::Context) -> Self::Result {
+        if msg.friendly_name == "admin" {
+            return Err(Error::DataConflict("admin username is reserved".into()));
+        } else {
+            self.with_connection(|conn| {
+                let new_user = User {
+                    id: CryptoUtil::generate_uuid(),
+                    friendly_name: msg.friendly_name,
+                    hashed_key: msg.hashed_key
+                };
+
+                diesel::insert_into(users::table)
+                    .values(&new_user)
+                    .execute(conn)?;
+
+                Ok(new_user)
+            })
+        }
+    }
+}
 
 impl_handler! (GetUserByName(conn, msg) for DbExecutor {
     let mut user = users::table

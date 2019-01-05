@@ -32,6 +32,7 @@ fn api_create_user((new_user, state): (Json<NewUserRequest>, State<AppState>))
 
     into_api_response(state.db
         .send(CreateUser { friendly_name: new_user.friendly_name.clone(), hashed_key }).flatten()
+        .map_err(|e| e.into())
         .and_then(|user| Ok(PluggableUser {
             id: user.id,
             friendly_name: user.friendly_name,
@@ -69,6 +70,7 @@ fn get_user_groups(db: Addr<DbExecutor>, id: String)
     -> impl Future<Item = Vec<PluggableGroup>, Error = ServiceError> {
     db
         .send(GetGroupsByUser { id }).flatten()
+        .map_err(|e| e.into())
         .and_then(|groups| 
             Ok(groups.into_iter().map(|group| PluggableGroup {
                 id: group.id,

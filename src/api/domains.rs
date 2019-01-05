@@ -195,6 +195,7 @@ fn get_domain_certificates_version(db: Addr<DbExecutor>, (domain_id, version): (
 fn get_domains_groups(db: Addr<DbExecutor>, id: String) 
     -> impl Future<Item = Vec<PluggableGroup>, Error = ServiceError> {
     db.send(GetGroupsByDomain { id }).flatten()
+        .map_err(|e| e.into())
         .and_then(|groups| 
             Ok(groups.into_iter().map(|group| PluggableGroup {
                 id: group.id,

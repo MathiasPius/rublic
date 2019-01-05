@@ -5,15 +5,15 @@ actor_command_new! (CreateDomain(fqdn: String) -> Result<Domain, Error>);
 actor_command_new! (DeleteDomain(fqdn: String) -> Result<(), Error>);
 actor_command_new! (GetDomainByFqdn(fqdn: String) -> Result<Domain, Error>);
 
-actor_command! (CreateUser(friendly_name: String, hashed_key: String) -> User);
+actor_command_new! (CreateUser(friendly_name: String, hashed_key: String) -> Result<User, Error>);
 actor_command! (GetUserByName(friendly_name: String) -> User);
 actor_command! (GetUser(id: String) -> User);
 actor_command! (GetUserPermissions(id: String) -> Vec<DomainPermission>);
 
 actor_command! (CreateGroup(friendly_name: String) -> Group);
 actor_command! (GetGroup(id: String) -> Group);
-actor_command! (GetGroupsByDomain(id: String) -> Vec<Group>);
-actor_command! (GetGroupsByUser(id: String) -> Vec<Group>);
+actor_command_new! (GetGroupsByDomain(id: String) -> Result<Vec<Group>, Error>);
+actor_command_new! (GetGroupsByUser(id: String) -> Result<Vec<Group>, Error>);
 actor_command! (SetGroupUsers(user_ids: Vec<String>, group_id: String) -> usize);
 actor_command! (SetGroupDomains(fqdns: Vec<String>, group_id: String) -> usize);
 actor_command! (GetUsersByGroup(id: String) -> Vec<User>);
