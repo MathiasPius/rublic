@@ -1,5 +1,6 @@
 pub mod messages;
 pub mod models;
+pub mod errors;
 mod handlers;
 
 use actix::{Actor, Context, Addr};

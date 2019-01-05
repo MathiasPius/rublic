@@ -11,3 +11,16 @@
         }
     }
 }
+
+
+#[macro_export] macro_rules! actor_command_new {
+    ($command:ident( $($names:ident : $types:ty),* ) -> $result:ty) => {
+        pub struct $command {
+            $(pub $names : $types),*
+        }
+
+        impl actix::Message for $command {
+            type Result = $result;
+        }
+    }
+}

@@ -1,19 +1,19 @@
 use actix::Handler;
-use futures::Future;
+use futures::{IntoFuture, Future};
 use std::io::Read;
 use std::fs::File;
 use openssl::x509::X509;
 use chrono::{NaiveDateTime};
-use crate::errors::ServiceError;
 use crate::database::messages::{AddCertificateToDomain, GetDomainByFqdn, DeleteCertificateByPath};
 use crate::database::models::Certificate;
 use crate::config::CERT_PATTERN;
 use super::CertificateManager;
 use super::messages::*;
 use super::models::*;
+use super::errors::Error;
 
 impl Handler<CertificateDiscovered> for CertificateManager {
-    type Result = Result<Certificate, ServiceError>;
+    type Result = Result<Certificate, Error>;
 
     fn handle(&mut self, msg: CertificateDiscovered, _: &mut Self::Context) -> Self::Result {
         let path = msg.path;
@@ -21,7 +21,6 @@ impl Handler<CertificateDiscovered> for CertificateManager {
 
         let path_str: String = path.to_string_lossy().into();
         let filename: String = path.file_name().unwrap().to_string_lossy().into();
-
 
         // This feels like a really dirty way to parse dates
         let mut not_before = None;
@@ -45,8 +44,8 @@ impl Handler<CertificateDiscovered> for CertificateManager {
 
         if let Some(names) = CERT_PATTERN.captures(&filename) {
             if names.len() != 4 {
-                println!("DW: certificate name {:?} failed pattern matching", path_str);
-                return Err(ServiceError::InternalServerError);
+                println!("DW: certificate name {:?} failed pattern matching", &path_str);
+                return Err(Error::InvalidPath(path_str));
             }
 
             let (certname, id, fileext) = (
@@ -54,11 +53,12 @@ impl Handler<CertificateDiscovered> for CertificateManager {
                 names.get(2).unwrap().as_str(), 
                 names.get(3).unwrap().as_str()
             );
-
+            /*
             // Lookup the fqdn and see if we the domain exists
             return self.db.send(GetDomainByFqdn{ 
                     fqdn
                 }).flatten()
+                .map_err(|e| Err(Error::Unknown))
                 // And if it does - insert the certificate
                 .and_then(|domain| {
                     let certificate = Certificate {
@@ -72,28 +72,33 @@ impl Handler<CertificateDiscovered> for CertificateManager {
                     };
 
                     self.db
-                        .send(AddCertificateToDomain { cert: certificate })
-                        .map_err(|e| e.into())
+                        .send(AddCertificateToDomain { cert: certificate }).flatten()
+                        .map_err(|e| Err(Error::Unknown))
                 })
-                .flatten().wait();
+                .map_err(|_| Err(Error::Unknown));
+            */
+            return Err(Error::Unknown);
         }
 
-        Err(ServiceError::InternalServerError)
+        Err(Error::Unknown)
     }
 }
 
 impl Handler<CertificateDisappeared> for CertificateManager {
-    type Result = Result<usize, ServiceError>;
+    type Result = Result<usize, Error>;
 
     fn handle(&mut self, msg: CertificateDisappeared, _: &mut Self::Context) -> Self::Result {
         self.db.send(DeleteCertificateByPath{ 
                 path: msg.path.to_string_lossy().into()  
             }).flatten().wait()
+            .map_err(|e| Error::Unknown);
+
+        Ok(0)
     }
 }
 
 impl Handler<GetCertificateByPath> for CertificateManager {
-    type Result = Result<SingleCertificate, ServiceError>;
+    type Result = Result<SingleCertificate, Error>;
 
     fn handle(&mut self, msg: GetCertificateByPath, _: &mut Self::Context) -> Self::Result {
         let mut bytes = Vec::new();
@@ -108,6 +113,6 @@ impl Handler<GetCertificateByPath> for CertificateManager {
             }
         };
 
-        Err(ServiceError::InternalServerError)
+        Err(Error::Unknown)
     }
 }

@@ -125,20 +125,23 @@ fn get_domain_certificate(db: Addr<DbExecutor>, certman: Addr<CertificateManager
     -> impl Future<Item = RawCertificate, Error = ServiceError>
 {
     db.send(GetDomainByFqdn{ fqdn }).flatten()
+        .map_err(|_| ServiceError::InternalServerError)
         .and_then(move |domain|
             db.send(GetCertificate { 
                 domain_id: domain.id, 
                 id: version,
                 friendly_name
             }).flatten()
+            .map_err(|_| ServiceError::InternalServerError)
             .and_then(move |cert| {
                 certman.send(GetCertificateByPath{ path: cert.path.clone() }).flatten()
+                    .map_err(|_| ServiceError::InternalServerError)
                     .and_then(move |file| {
                         Ok(RawCertificate {
                             raw_data: file.raw_data,
                             is_private: cert.is_private
                         })
-                    })
+                    }).map_err(|_| ServiceError::InternalServerError)
             })
         )
 }

@@ -65,6 +65,12 @@ impl From<diesel::result::Error> for ServiceError {
     }
 }
 
+impl From<crate::certman::errors::Error> for ServiceError {
+    fn from(_: crate::certman::errors::Error) -> Self {
+        ServiceError::InternalServerError
+    }
+}
+
 impl From<std::io::Error> for ServiceError {
     fn from(_e: std::io::Error) -> Self {
         ServiceError::InternalServerError
