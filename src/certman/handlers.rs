@@ -87,45 +87,41 @@ impl Handler<CertificateDiscovered> for CertificateManager {
         let path_str: String = path.to_string_lossy().into();
         let filename: String = path.file_name().unwrap().to_string_lossy().into();
 
-        match parse_filename(&filename) {
-            Ok((friendly_name, version)) => {
-                match read_pem_file(&path_str) {
-                    Ok(contents) => {
-                        return self.db.send(GetDomainByFqdn { fqdn }).flatten()
-                            .and_then(|domain| {
-                                match contents {
-                                    PemFileContents::PublicCertificate(cert) => {
-                                        return  Ok(Certificate {
-                                            is_private: false,
-                                            id: version,
-                                            domain_id: domain.id,
-                                            friendly_name,
-                                            path: path_str,
-                                            not_after: Some(cert.not_after),
-                                            not_before: Some(cert.not_before)
-                                        })
-                                    },
-                                    PemFileContents::PrivateKey(_) => {
-                                        return Ok(Certificate {
-                                            is_private: true,
-                                            id: version,
-                                            domain_id: domain.id,
-                                            friendly_name,
-                                            path: path_str,
-                                            not_before: None,
-                                            not_after: None
-                                        })
-                                    }
-                                }
+         parse_filename(&filename)
+        .and_then(|(friendly_name, version)| {
+         read_pem_file(&path_str)
+        .and_then(|contents| {
+            return self.db.send(GetDomainByFqdn { fqdn }).flatten()
+                .and_then(|domain| {
+                    match contents {
+                        PemFileContents::PublicCertificate(cert) => {
+                            return  Ok(Certificate {
+                                is_private: false,
+                                id: version,
+                                domain_id: domain.id,
+                                friendly_name,
+                                path: path_str,
+                                not_after: Some(cert.not_after),
+                                not_before: Some(cert.not_before)
                             })
-                            .from_err()
-                            .wait()
-                    },
-                    Err(e) => Err(e)
-                }
-            },
-            Err(e) => Err(e)
-        }
+                        },
+                        PemFileContents::PrivateKey(_) => {
+                            return Ok(Certificate {
+                                is_private: true,
+                                id: version,
+                                domain_id: domain.id,
+                                friendly_name,
+                                path: path_str,
+                                not_before: None,
+                                not_after: None
+                            })
+                        }
+                    }
+                })
+                .from_err()
+                .wait()
+            })
+        })
     }
 }
 
