@@ -3,7 +3,7 @@ use futures::future::Future;
 use crate::errors::ServiceError;
 use crate::app::AppState;
 use crate::authorization::messages::*;
-use crate::authorization::{JWT_ACCESS_LIFETIME, JWT_REFRESH_LIFETIME};
+use crate::config::{JWT_ACCESS_LIFETIME, JWT_REFRESH_LIFETIME};
 use super::models::*;
 
 pub fn register(router: Scope<AppState>) -> Scope<AppState> {

@@ -22,6 +22,7 @@ extern crate jsonwebtoken as jwt;
 
 mod app;
 
+mod config;
 #[macro_use] mod models;
 mod authorization;
 mod schema;
@@ -36,28 +37,23 @@ use actix::prelude::*;
 use actix_web::server;
 use diesel::{r2d2::ConnectionManager, MysqlConnection};
 use dotenv::dotenv;
-use std::env;
 use crate::authorization::AuthorizationManager;
 use crate::certman::CertificateManager;
 use crate::database::DbExecutor;
 use crate::watcher::ArchiveWatcher;
+use crate::config::{DATABASE_URL, LETSENCRYPT_ARCHIVE};
 
 
 fn main() {
-    std::env::set_var("RUST_LOG", "actix_web=info");
     env_logger::init();
 
     dotenv().ok();
-    let database_url = env::var("DATABASE_URL")
-        .expect("DATABASE_URL must be set");
-
-    let letsencrypt_archive = env::var("LETSENCRYPT_ARCHIVE")
-        .unwrap_or_else(|_| "/etc/letsencrypt/archive".into()).into();
+    crate::config::initialize();
 
     let sys = actix::System::new("Rublic");
 
     // create db connection pool
-    let manager = ConnectionManager::<MysqlConnection>::new(database_url);
+    let manager = ConnectionManager::<MysqlConnection>::new(DATABASE_URL.to_string());
     let pool = r2d2::Pool::builder()
         .build(manager)
         .expect("Failed to create pool.");
@@ -77,7 +73,7 @@ fn main() {
     let certmanref = certman.clone();
     let dbref = database.clone();
     Arbiter::start(move |_| {
-        ArchiveWatcher::new(dbref.clone(), certmanref.clone(), letsencrypt_archive)
+        ArchiveWatcher::new(dbref.clone(), certmanref.clone(), LETSENCRYPT_ARCHIVE.to_path_buf())
     });
 
     server::new(move || app::create_app(database.clone(), certman.clone(), authman.clone()))

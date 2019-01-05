@@ -2,8 +2,6 @@ pub mod models;
 pub mod messages;
 mod handlers;
 
-use std::env;
-use chrono::Duration;
 use futures::Future;
 use actix::{Actor, Addr, Context};
 use actix_web::{HttpRequest, HttpResponse, Result, FromRequest};
@@ -12,43 +10,11 @@ use actix_web_httpauth::extractors::{
     basic::{BasicAuth, Config as BasicConfig},
     bearer::{BearerAuth, Config as BearerConfig}
 };
-use jwt::{Header, Algorithm, Validation};
 
 use crate::database::DbExecutor;
 use crate::app::AppState;
 use self::messages::*;
 use self::models::*;
-
-
-lazy_static! {
-    pub static ref JWT_HEADER: Header = Header::new(Algorithm::HS512);
-
-    pub static ref JWT_VALIDATION: Validation = Validation {
-        leeway: 5,
-        validate_exp: true,
-        validate_iat: true,
-        validate_nbf: true,
-        aud: Some(JWT_AUDIENCE.to_string().into()),
-        iss: Some(JWT_ISSUER.to_string()),
-        sub: None,
-        algorithms: vec![Algorithm::HS512]
-    };
-
-    static ref JWT_SHARED_SECRET: String = std::env::var("RUBLIC_SHARED_SECRET")
-        .expect("RUBLIC_SHARED_SECRET environment variable is not defined!");
-
-    static ref JWT_AUDIENCE: String = env::var("RUBLIC_JWT_AUDIENCE")
-        .unwrap_or_else(|_| "rublic-audience".into());
-
-    static ref JWT_ISSUER: String = env::var("RUBLIC_JWT_ISSUER")
-        .unwrap_or_else(|_| "rublic-issuer".into());
-
-    pub static ref JWT_ACCESS_LIFETIME: Duration = Duration::hours(1);
-    pub static ref JWT_REFRESH_LIFETIME: Duration = Duration::days(30);
-
-    static ref ADMIN_PASSWORD: String = env::var("RUBLIC_ADMIN_PASSWORD")
-        .expect("RUBLIC_ADMIN_PASSWORD was not defined!");
-}
 
 
 pub trait ValidateClaim {

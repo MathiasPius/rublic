@@ -5,9 +5,10 @@ use jwt::{encode, decode};
 use crate::errors::ServiceError;
 use crate::cryptoutil::CryptoUtil;
 use crate::database::messages::*;
+use crate::config::{ADMIN_PASSWORD, JWT_SHARED_SECRET, JWT_VALIDATION, JWT_ISSUER, JWT_AUDIENCE, JWT_HEADER};
 use super::models::*;
 use super::messages::*;
-use super::{ADMIN_PASSWORD, JWT_SHARED_SECRET, JWT_VALIDATION, JWT_ISSUER, JWT_AUDIENCE, JWT_HEADER, AuthorizationManager};
+use super::AuthorizationManager;
 
 impl Handler<AuthorizeUser> for AuthorizationManager {
     type Result = Result<Vec<Claim>, ServiceError>;

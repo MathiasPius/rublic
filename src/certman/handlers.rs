@@ -1,4 +1,3 @@
-use regex::Regex;
 use actix::Handler;
 use futures::Future;
 use std::io::Read;
@@ -8,13 +7,10 @@ use chrono::{NaiveDateTime};
 use crate::errors::ServiceError;
 use crate::database::messages::{AddCertificateToDomain, GetDomainByFqdn, DeleteCertificateByPath};
 use crate::database::models::Certificate;
+use crate::config::CERT_PATTERN;
 use super::CertificateManager;
 use super::messages::*;
 use super::models::*;
-
-lazy_static! {
-    static ref CERT_PATTERN: Regex = Regex::new(r"(\w+)([0-9]+)\.(\w+)").unwrap();
-}
 
 impl Handler<CertificateDiscovered> for CertificateManager {
     type Result = Result<Certificate, ServiceError>;
