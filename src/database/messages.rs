@@ -2,8 +2,8 @@ use super::models::*;
 use super::errors::Error;
 
 actor_command_new! (CreateDomain(fqdn: String) -> Result<Domain, Error>);
-actor_command! (DeleteDomain(fqdn: String) -> usize);
-actor_command! (GetDomainByFqdn(fqdn: String) -> Domain);
+actor_command_new! (DeleteDomain(fqdn: String) -> Result<(), Error>);
+actor_command_new! (GetDomainByFqdn(fqdn: String) -> Result<Domain, Error>);
 
 actor_command! (CreateUser(friendly_name: String, hashed_key: String) -> User);
 actor_command! (GetUserByName(friendly_name: String) -> User);

@@ -69,6 +69,7 @@ fn api_get_domain_certificates((fqdn, state): (Path<String>, State<AppState>))
     -> FutureResponse<HttpResponse> {
 
     into_api_response(state.db.send(GetDomainByFqdn { fqdn: fqdn.into_inner() }).flatten()
+        .from_err()
         .and_then(move |domain| {
             get_domains_certificates(state.db.clone(), domain.id)
         }))
@@ -126,7 +127,7 @@ fn get_domain_certificate(db: Addr<DbExecutor>, certman: Addr<CertificateManager
     -> impl Future<Item = RawCertificate, Error = ServiceError>
 {
     db.send(GetDomainByFqdn{ fqdn }).flatten()
-        .map_err(|_| ServiceError::InternalServerError)
+        .from_err()
         .and_then(move |domain|
             db.send(GetCertificate { 
                 domain_id: domain.id, 
@@ -154,6 +155,7 @@ fn api_get_domain_certificates_version((path, state): (Path<(String, i32)>, Stat
 
     into_api_response(
         state.db.send(GetDomainByFqdn{ fqdn }).flatten()
+            .from_err()
             .and_then(move |domain|
                 get_domain_certificates_version(state.db.clone(), (domain.id, Some(version)))
             )
@@ -165,6 +167,7 @@ fn api_get_domain_latest_certificates_version((fqdn, state): (Path<String>, Stat
 
     into_api_response(
         state.db.send(GetDomainByFqdn{ fqdn: fqdn.into_inner() }).flatten()
+            .from_err()
             .and_then(move |domain|
                 get_domain_certificates_version(state.db.clone(), (domain.id, None))
             )
@@ -221,6 +224,7 @@ fn get_domains_certificates(db: Addr<DbExecutor>, id: String)
 fn get_domain_by_fqdn(db: Addr<DbExecutor>, fqdn: String)
     -> impl Future<Item = PluggableDomain, Error = ServiceError> {
     db.send(GetDomainByFqdn { fqdn }).flatten()
+        .from_err()
         .and_then(move |domain| 
             get_domains_groups(db.clone(), domain.id.clone())
                 .join(get_domain_certificates_version(db.clone(), (domain.id.clone(), None)))

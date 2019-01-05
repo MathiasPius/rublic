@@ -10,6 +10,9 @@ pub enum Error {
     #[fail(display = "Data Not Found: {}", _0)]
     DataNotFound(String),
 
+    #[fail(display = "Too Many Results: {}", _0)]
+    TooManyresults(String),
+
     #[fail(display = "Incorrect Query: {}", _0)]
     DataIncorrect(String),
 

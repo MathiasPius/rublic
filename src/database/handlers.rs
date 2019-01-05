@@ -31,12 +31,12 @@ macro_rules! impl_handler {
     }
 }
 
+use crate::schema::*;
 
 impl Handler<CreateDomain> for DbExecutor {
     type Result = Result<Domain, Error>;
 
     fn handle(&mut self, msg: CreateDomain, _: &mut Self::Context) -> Self::Result {
-        use crate::schema::*;
         self.with_connection(|conn| {
             let domain = Domain {
                 id: CryptoUtil::generate_uuid(),
@@ -53,27 +53,40 @@ impl Handler<CreateDomain> for DbExecutor {
     }
 }
 
-impl_handler! (DeleteDomain(conn, msg) for DbExecutor {
-    diesel::delete(domains::table)
-        .filter(domains::fqdn.eq(&msg.fqdn))
-        .execute(conn)
-        .map_err(|e| e.into())
-});
+impl Handler<DeleteDomain> for DbExecutor {
+    type Result = Result<(), Error>;
 
-impl_handler! (GetDomainByFqdn(conn, msg) for DbExecutor {
-    let mut entry = domains::table
-        .filter(domains::fqdn.eq(&msg.fqdn))
-        .load::<Domain>(conn)?;
-
-    // There should never be more than one entry per fqdn.
-    // Fail just in case there's a security issue here
-    if entry.len() > 1 {
-        return Err(ServiceError::InternalServerError);
+    fn handle(&mut self, msg: DeleteDomain, _: &mut Self::Context) -> Self::Result {
+        self.with_connection(|conn| {
+            diesel::delete(domains::table)
+                .filter(domains::fqdn.eq(&msg.fqdn))
+                .execute(conn)
+                .map_err(|e| e.into())
+                .and_then(|rows| match rows {
+                    0 => Err(Error::DataNotFound("domain not found".into())),
+                    _ => Ok(())
+                })
+        })
     }
+}
 
-    Ok(entry.pop().ok_or_else(|| ServiceError::NotFound("domain with given fqdn not found".into()))?)
-});
+impl Handler<GetDomainByFqdn> for DbExecutor {
+    type Result = Result<Domain, Error>;
 
+    fn handle(&mut self, msg: GetDomainByFqdn, _: &mut Self::Context) -> Self::Result {
+        self.with_connection(|conn| {
+            domains::table
+                .filter(domains::fqdn.eq(&msg.fqdn))
+                .load::<Domain>(conn)
+                .map_err(|e| e.into())
+                .and_then(move |mut found| match found.len() {
+                    0 => Err(Error::DataNotFound("domain not found".into())),
+                    1 => Ok(found.pop().unwrap()),
+                    _ => Err(Error::TooManyresults("multiple domains found".into()))
+                })
+        })
+    }
+}
 
 impl_handler! (GetGroupsByDomain(conn, msg) for DbExecutor {
     domain_group_mappings::table
