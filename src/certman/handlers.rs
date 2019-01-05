@@ -85,14 +85,15 @@ impl Handler<CertificateDiscovered> for CertificateManager {
 }
 
 impl Handler<CertificateDisappeared> for CertificateManager {
-    type Result = Result<usize, Error>;
+    type Result = Result<(), Error>;
 
     fn handle(&mut self, msg: CertificateDisappeared, _: &mut Self::Context) -> Self::Result {
         self.db.send(DeleteCertificateByPath{ 
                 path: msg.path.to_string_lossy().into()  
-            }).flatten().wait();
-
-        Ok(0)
+            })
+            .map_err(|_| Error::Unknown)
+            .map(|_| ())
+            .wait()
     }
 }
 
