@@ -26,7 +26,10 @@ pub struct ClaimsProviderMiddleware { }
 
 impl Middleware<AppState> for ClaimsProviderMiddleware {
     fn start(&self, req: &HttpRequest<AppState>) -> Result<Started> {
-;
+
+        
+
+
         if let Ok(basic) = BasicAuth::from_request(&req, &BasicConfig::default()) {
             // Attempt to authorize the user, and if it worked,
             // tag the request with their claims, otherwise return unauthorized

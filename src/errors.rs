@@ -23,11 +23,11 @@ pub enum ServiceError {
     Unauthorized
 }
 
+/*
 #[derive(Serialize, Deserialize)]
-pub struct ApiError {
+struct ApiError {
     pub error: String
 }
-
 // impl ResponseError trait allows to convert our errors into http responses with appropriate data
 impl ResponseError for ServiceError {
     fn error_response(&self) -> HttpResponse {
@@ -44,6 +44,7 @@ impl ResponseError for ServiceError {
         }
     }
 }
+*/
 
 impl From<actix::MailboxError> for ServiceError {
     fn from(_: actix::MailboxError) -> Self {
