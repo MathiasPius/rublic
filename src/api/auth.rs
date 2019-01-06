@@ -5,6 +5,7 @@ use crate::app::AppState;
 use crate::authorization::messages::*;
 use crate::config::{JWT_ACCESS_LIFETIME, JWT_REFRESH_LIFETIME};
 use super::models::*;
+use super::{make_result, ResultType};
 
 pub fn register(router: Scope<AppState>) -> Scope<AppState> {
     router
@@ -19,11 +20,7 @@ fn api_password_grant_query((state, grant): (State<AppState>, Query<Grant>))
     match grant.into_inner() {
         Grant::Password(pw) => {
             password_grant(state, pw.username, pw.password)
-                .and_then(|response| {
-                    Ok(HttpResponse::Ok().json(response))
-                })
-                .from_err()
-                .responder()
+                .then(make_result(ResultType::Created)).responder()
         },
         Grant::Refresh(rf) => {
             state.authman.clone()
@@ -37,11 +34,7 @@ fn api_password_grant_query((state, grant): (State<AppState>, Query<Grant>))
                     access_token: token,
                     refresh_token: rf.refresh_token
                 }))
-                .and_then(|response| {
-                    Ok(HttpResponse::Ok().json(response))
-                })
-                .from_err()
-                .responder()
+                .then(make_result(ResultType::Created)).responder()
         }
     }   
 }
