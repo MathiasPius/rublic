@@ -30,6 +30,13 @@ pub fn into_api_response<T: serde::Serialize>(response: impl Future<Item = T, Er
         .responder()
 }
 
+pub fn api_result<T: serde::Serialize>(response: impl Future<Item = T, Error = ServiceError> + 'static) 
+    -> FutureResponse<HttpResponse> {
+    Box::new(response
+        .and_then(|result|
+            Ok(ApiResult::<T>::Data(result).into())
+        ).from_err())
+}
 
 pub enum ApiResult<T> 
     where T: serde::Serialize 
@@ -46,29 +53,22 @@ impl ResponseError for ServiceError {
     }
 }
 
-impl<T> Responder for ApiResult<T> 
+impl<T> Into<HttpResponse> for ApiResult<T> 
     where T: serde::Serialize 
 {
-    type Item = HttpResponse;
-    type Error = actix_web::error::Error;
-
-    fn respond_to<S>(self, req: &HttpRequest<S>) -> Result<HttpResponse, Self::Error> {
+    fn into(self) -> HttpResponse {
         match self {
             ApiResult::<T>::Data(data) => {
-                Ok(req.build_response(StatusCode::OK)
-                    .content_type("application/json")
-                    .json(data))
+                HttpResponse::Ok().json(data)
             },
             ApiResult::<T>::Created(data) => {
-                Ok(req.build_response(StatusCode::CREATED)
-                    .content_type("application/json")
-                    .json(data))
+                HttpResponse::Created().json(data)
             },
             ApiResult::<T>::Acknowledged => {
-                Ok(req.build_response(StatusCode::OK).finish())
+                HttpResponse::Ok().finish()
             },
             ApiResult::<T>::Error(e) => {
-                Ok(e.error_response())
+                e.error_response()
             }
         }
     }

@@ -23,28 +23,6 @@ pub enum ServiceError {
     Unauthorized
 }
 
-/*
-#[derive(Serialize, Deserialize)]
-struct ApiError {
-    pub error: String
-}
-// impl ResponseError trait allows to convert our errors into http responses with appropriate data
-impl ResponseError for ServiceError {
-    fn error_response(&self) -> HttpResponse {
-        match *self {
-            ServiceError::InternalServerError => {
-                HttpResponse::InternalServerError().json(ApiError { error: "Internal Server Error".into() })
-            },
-            ServiceError::Unauthorized => {
-                HttpResponse::Unauthorized().json(ApiError { error: "Unauthorized".into() })
-            },
-            ServiceError::BadRequest(ref message) => HttpResponse::BadRequest().json(ApiError { error: message.clone() }),
-            ServiceError::NotFound(ref message) => HttpResponse::NotFound().json(ApiError { error: message.clone() }),
-            ServiceError::Conflict(ref message) => HttpResponse::Conflict().json(ApiError { error: message.clone() }),
-        }
-    }
-}
-*/
 
 impl From<actix::MailboxError> for ServiceError {
     fn from(_: actix::MailboxError) -> Self {
