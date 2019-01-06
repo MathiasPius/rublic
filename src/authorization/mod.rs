@@ -8,6 +8,7 @@ use actix::{Actor, Addr, Context};
 use actix_web::{HttpRequest, Result};
 
 use crate::database::DbExecutor;
+use crate::app::AppState;
 use self::models::*;
 use self::errors::Error;
 pub use self::middleware::{ClaimsCheckerMiddleware, ClaimsProviderMiddleware};
@@ -78,13 +79,17 @@ impl<S> ValidateClaim for HttpRequest<S> {
     }
 }
 
-pub fn authorize(claims: &[(&str, &str)]) -> ClaimsCheckerMiddleware {
-    ClaimsCheckerMiddleware {
-        required_claims: claims.iter().map(|claims| {
-            Claim {
-                subject: claims.0.into(),
-                permission: claims.1.into()
-            }
-        }).collect()
+pub trait ResourceAuthorization {
+    fn authorize_resource(self, resource: &str, permission: &str) -> Self;
+}
+
+impl ResourceAuthorization for actix_web::Scope<AppState> {
+    fn authorize_resource(self, resource: &str, permission: &str) -> Self {
+        self.middleware(ClaimsCheckerMiddleware {
+            required_claims: vec!(Claim {
+                subject: resource.to_string(),
+                permission: permission.to_string()
+            })
+        })
     }
 }

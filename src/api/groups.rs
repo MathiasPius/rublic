@@ -5,13 +5,13 @@ use crate::app::AppState;
 use crate::errors::ServiceError;
 use crate::database::messages::*;
 use crate::database::DbExecutor;
-use crate::authorization::authorize;
+use crate::authorization::ResourceAuthorization;
 use super::into_api_response;
 use super::models::*;
 
 pub fn register(router: Scope<AppState>) -> Scope<AppState> {
     router
-        .middleware(authorize(&[("*", "*")]))
+        .authorize_resource("*", "*")
         .nested("/{group_id}", |entry| {
             entry.resource("", |r| {
                 r.method(Method::GET).with_async(api_get_group);
