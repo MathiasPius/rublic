@@ -181,6 +181,7 @@ fn get_domain_certificates_version(db: Addr<DbExecutor>, (domain_id, version): (
             domain_id, 
             id: version
         }).flatten()
+        .map_err(|e| e.into())
         .and_then(move |certificates| -> Result<Vec<Certificate>, ServiceError> {
             Ok(certificates.into_iter().map(|cert| Certificate {
                 version: cert.id,
@@ -209,6 +210,7 @@ fn get_domains_groups(db: Addr<DbExecutor>, id: String)
 fn get_domains_certificates(db: Addr<DbExecutor>, id: String) 
     -> impl Future<Item = Vec<Certificate>, Error = ServiceError> {
     db.send(GetCertificatesByDomain { id }).flatten()
+        .map_err(|e| e.into())
         .and_then(|certificates|
             Ok(certificates.into_iter().map(|cert| {
                 Certificate {

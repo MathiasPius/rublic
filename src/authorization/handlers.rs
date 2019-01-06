@@ -34,6 +34,7 @@ impl Handler<AuthorizeUser> for AuthorizationManager {
                 }
             ).and_then(move |user: crate::database::models::User| {
                 self.db.send(GetUserPermissions{ id: user.id }).flatten()
+                    .map_err(|e| e.into())
                     .and_then(move |permissions: Vec<crate::database::models::DomainPermission>| {
                         Ok(permissions.into_iter().map(|permission|
                             Claim {

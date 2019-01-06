@@ -39,6 +39,7 @@ fn api_get_groups(state: State<AppState>)
     -> FutureResponse<HttpResponse> {
     into_api_response(state.db.clone()
         .send(GetGroups {}).flatten()
+        .map_err(|e| e.into())
         .and_then(move |groups|
             join_all(groups.into_iter().map(move |group|
                 get_group(state.db.clone(), group.id)
@@ -62,6 +63,7 @@ fn api_set_group_users((group_id, users, state): (Path<String>, Json<Vec<String>
         
     into_api_response(state.db.clone()
         .send(SetGroupUsers { user_ids: users.into_inner(), group_id: group_id.clone() }).flatten()
+        .map_err(|e| e.into())
         .and_then(move |_| {
             get_group(state.db.clone(), group_id.into_inner())
         })
@@ -73,6 +75,7 @@ fn api_set_group_domains((group_id, fqdns, state): (Path<String>, Json<Vec<Strin
 
     into_api_response(state.db.clone()
         .send(SetGroupDomains { fqdns: fqdns.into_inner(), group_id: group_id.clone() }).flatten()
+        .map_err(|e| e.into())
         .and_then(move |_| {
             get_group(state.db.clone(), group_id.into_inner())
         })
@@ -84,6 +87,7 @@ fn api_create_group((group, state): (Json<NewGroupRequest>, State<AppState>))
 
     into_api_response(state.db.clone()
         .send(CreateGroup { friendly_name: group.friendly_name.clone() }).flatten()
+        .map_err(|e| e.into())
         .and_then(|group| Ok(PluggableGroup {
             id: group.id,
             friendly_name: group.friendly_name,
@@ -104,6 +108,7 @@ fn get_group(db: Addr<DbExecutor>, id: String)
 
     db.clone()
         .send(GetGroup { id: id.clone() }).flatten()
+        .map_err(|e| e.into())
         .join3(
             get_group_users(db.clone(), id.clone()),
             get_group_domains(db.clone(), id.clone())
@@ -122,6 +127,7 @@ fn get_group_users(db: Addr<DbExecutor>, id: String)
     -> impl Future<Item = Vec<PluggableUser>, Error = ServiceError> {
     db
         .send(GetUsersByGroup { id }).flatten()
+        .map_err(|e| e.into())
         .and_then(|users| 
             Ok(users.into_iter().map(|user| PluggableUser {
                 id: user.id,
@@ -136,6 +142,7 @@ fn get_group_domains(db: Addr<DbExecutor>, id: String)
     -> impl Future<Item = Vec<PluggableDomain>, Error = ServiceError> {
     db
         .send(GetDomainsByGroup { id }).flatten()
+        .map_err(|e| e.into())
         .and_then(|domains| 
             Ok(domains.into_iter().map(|domain| PluggableDomain {
                 id: domain.id,
