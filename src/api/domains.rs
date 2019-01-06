@@ -9,7 +9,7 @@ use crate::certman::messages::*;
 use crate::certman::CertificateManager;
 use crate::authorization::{ValidateClaim, ResourceAuthorization};
 use crate::authorization::models::*;
-use super::{into_api_response, api_result};
+use super::{into_api_response, api_result, make_result};
 use super::models::*;
 
 pub fn register(router: Scope<AppState>) -> Scope<AppState> {
@@ -47,7 +47,7 @@ pub fn register(router: Scope<AppState>) -> Scope<AppState> {
 fn api_create_domain((fqdn, state): (Path<String>, State<AppState>))
     -> FutureResponse<HttpResponse> {
 
-    api_result(state.db
+    state.db
         .send(CreateDomain { fqdn: fqdn.into_inner() }).flatten()
         .from_err()
         .and_then(|domain| Ok(PluggableDomain {
@@ -56,7 +56,8 @@ fn api_create_domain((fqdn, state): (Path<String>, State<AppState>))
             groups: None,
             latest_certs: None
         }))
-    )
+        .then(*make_result(super::ResultType::Created))
+        .responder()
 }
 
 fn api_get_domain((fqdn, state): (Path<String>, State<AppState>))

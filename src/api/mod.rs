@@ -38,6 +38,26 @@ pub fn api_result<T: serde::Serialize>(response: impl Future<Item = T, Error = S
         ).from_err())
 }
 
+pub enum ResultType {
+    Data,
+    Created
+}
+
+pub fn make_result<T: serde::Serialize>(result_type: ResultType) 
+    -> Box<impl FnOnce(Result<T, ServiceError>) -> Result<HttpResponse, actix_web::Error>> {
+    return Box::new(move |result: Result<T, ServiceError>| {
+        match result {
+            Ok(data) => {
+                match result_type {
+                    ResultType::Data => Ok(ApiResult::<T>::Data(data).into()),
+                    ResultType::Created => Ok(ApiResult::<T>::Created(data).into())
+                }
+            },
+            Err(e) => Err(e.into())
+        }
+    })
+}
+
 pub enum ApiResult<T> 
     where T: serde::Serialize 
 {
