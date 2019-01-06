@@ -84,7 +84,7 @@ fn api_get_domain_certificate((path, state, req): (Path<(String, i32, String)>, 
         // If the returned certificate is a private key, make sure the user 
         // is allowed to see them, before transmitting them
         .and_then(move |result| {
-            if result.is_private && !req.validate_claims(&[Claim { subject: "fqdn".into(), permission: "private".into()}]) {
+            if result.is_private && req.validate_claims(&[Claim { subject: "fqdn".into(), permission: "private".into()}]).is_err() {
                 return Err(ServiceError::Unauthorized);
             }
 
@@ -108,7 +108,7 @@ fn api_get_domain_latest_certificate((path, state, req): (Path<(String, String)>
         // If the returned certificate is a private key, make sure the user 
         // is allowed to see them, before transmitting them
         .and_then(move |result| {
-            if result.is_private && !req.validate_claims(&[Claim { subject: "fqdn".into(), permission: "private".into()}]) {
+            if result.is_private && req.validate_claims(&[Claim { subject: "fqdn".into(), permission: "private".into()}]).is_err() {
                 return Err(ServiceError::Unauthorized);
             }
 
