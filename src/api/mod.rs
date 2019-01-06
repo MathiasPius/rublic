@@ -4,9 +4,7 @@ mod domains;
 mod users;
 mod groups;
 
-use actix_web::{Scope, FutureResponse, ResponseError, HttpResponse, AsyncResponder, HttpRequest, http::StatusCode, Responder};
-use futures::future::Future;
-use serde_derive::{Serialize};
+use actix_web::{Scope, ResponseError, HttpResponse};
 use crate::errors::ServiceError;
 use super::app::AppState;
 
@@ -20,42 +18,26 @@ pub fn register(scope: Scope<AppState>) -> Scope<AppState> {
         .nested("/groups", groups::register)
 }
 
-pub fn into_api_response<T: serde::Serialize>(response: impl Future<Item = T, Error = ServiceError> + 'static) 
-    -> FutureResponse<HttpResponse> {
-    response
-        .and_then(|result|
-            Ok(HttpResponse::Ok().json(result))
-        )
-        .from_err()
-        .responder()
-}
-
-pub fn api_result<T: serde::Serialize>(response: impl Future<Item = T, Error = ServiceError> + 'static) 
-    -> FutureResponse<HttpResponse> {
-    Box::new(response
-        .and_then(|result|
-            Ok(ApiResult::<T>::Data(result).into())
-        ).from_err())
-}
-
 pub enum ResultType {
     Data,
-    Created
+    Created,
+    Acknowledged
 }
 
 pub fn make_result<T: serde::Serialize>(result_type: ResultType) 
-    -> Box<impl FnOnce(Result<T, ServiceError>) -> Result<HttpResponse, actix_web::Error>> {
-    return Box::new(move |result: Result<T, ServiceError>| {
+    -> impl FnOnce(Result<T, ServiceError>) -> Result<HttpResponse, actix_web::Error> {
+    return move |result: Result<T, ServiceError>| {
         match result {
             Ok(data) => {
                 match result_type {
                     ResultType::Data => Ok(ApiResult::<T>::Data(data).into()),
-                    ResultType::Created => Ok(ApiResult::<T>::Created(data).into())
+                    ResultType::Created => Ok(ApiResult::<T>::Created(data).into()),
+                    ResultType::Acknowledged => Ok(ApiResult::<T>::Acknowledged.into())
                 }
             },
             Err(e) => Err(e.into())
         }
-    })
+    }
 }
 
 pub enum ApiResult<T> 
@@ -63,8 +45,7 @@ pub enum ApiResult<T>
 {
     Created(T),
     Data(T),
-    Acknowledged,
-    Error(ServiceError)
+    Acknowledged
 }
 
 impl ResponseError for ServiceError {
@@ -86,9 +67,6 @@ impl<T> Into<HttpResponse> for ApiResult<T>
             },
             ApiResult::<T>::Acknowledged => {
                 HttpResponse::Ok().finish()
-            },
-            ApiResult::<T>::Error(e) => {
-                e.error_response()
             }
         }
     }

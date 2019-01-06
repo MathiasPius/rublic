@@ -9,7 +9,7 @@ use crate::certman::messages::*;
 use crate::certman::CertificateManager;
 use crate::authorization::{ValidateClaim, ResourceAuthorization};
 use crate::authorization::models::*;
-use super::{into_api_response, api_result, make_result};
+use super::{make_result, ResultType};
 use super::models::*;
 
 pub fn register(router: Scope<AppState>) -> Scope<AppState> {
@@ -48,32 +48,32 @@ fn api_create_domain((fqdn, state): (Path<String>, State<AppState>))
     -> FutureResponse<HttpResponse> {
 
     state.db
-        .send(CreateDomain { fqdn: fqdn.into_inner() }).flatten()
-        .from_err()
+        .send(CreateDomain { fqdn: fqdn.into_inner() })
+        .flatten().from_err()
         .and_then(|domain| Ok(PluggableDomain {
             fqdn: domain.fqdn,
             id: domain.id,
             groups: None,
             latest_certs: None
         }))
-        .then(*make_result(super::ResultType::Created))
-        .responder()
+        .then(make_result(ResultType::Created)).responder()
 }
 
 fn api_get_domain((fqdn, state): (Path<String>, State<AppState>))
     -> FutureResponse<HttpResponse> {
   
-    into_api_response(get_domain_by_fqdn(state.db.clone(), fqdn.to_string()))
+    get_domain_by_fqdn(state.db.clone(), fqdn.to_string())
+        .then(make_result(ResultType::Data)).responder()
 }
 
 fn api_get_domain_certificates((fqdn, state): (Path<String>, State<AppState>)) 
     -> FutureResponse<HttpResponse> {
 
-    into_api_response(state.db.send(GetDomainByFqdn { fqdn: fqdn.into_inner() }).flatten()
-        .from_err()
+    state.db.send(GetDomainByFqdn { fqdn: fqdn.into_inner() }).flatten().from_err()
         .and_then(move |domain| {
             get_domains_certificates(state.db.clone(), domain.id)
-        }))
+        })
+        .then(make_result(ResultType::Data)).responder()
 }
 
 fn api_get_domain_certificate((path, state, req): (Path<(String, i32, String)>, State<AppState>, HttpRequest<AppState>))
@@ -154,25 +154,21 @@ fn api_get_domain_certificates_version((path, state): (Path<(String, i32)>, Stat
 
     let (fqdn, version) = path.into_inner();
 
-    into_api_response(
-        state.db.send(GetDomainByFqdn{ fqdn }).flatten()
-            .from_err()
-            .and_then(move |domain|
-                get_domain_certificates_version(state.db.clone(), (domain.id, Some(version)))
-            )
-    )
+    state.db.send(GetDomainByFqdn{ fqdn }).flatten().from_err()
+        .and_then(move |domain|
+            get_domain_certificates_version(state.db.clone(), (domain.id, Some(version)))
+        )
+        .then(make_result(ResultType::Data)).responder()
 }
 
 fn api_get_domain_latest_certificates_version((fqdn, state): (Path<String>, State<AppState>))
     -> FutureResponse<HttpResponse> {
 
-    into_api_response(
-        state.db.send(GetDomainByFqdn{ fqdn: fqdn.into_inner() }).flatten()
-            .from_err()
-            .and_then(move |domain|
-                get_domain_certificates_version(state.db.clone(), (domain.id, None))
-            )
-    )
+    state.db.send(GetDomainByFqdn{ fqdn: fqdn.into_inner() }).flatten().from_err()
+        .and_then(move |domain|
+            get_domain_certificates_version(state.db.clone(), (domain.id, None))
+        )
+        .then(make_result(ResultType::Data)).responder()
 }
 
 fn get_domain_certificates_version(db: Addr<DbExecutor>, (domain_id, version): (String, Option<i32>))

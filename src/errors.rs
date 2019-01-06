@@ -1,6 +1,4 @@
 // errors.rs
-use serde_derive::{Serialize, Deserialize};
-use actix_web::{error::ResponseError, HttpResponse};
 use diesel::result::{Error, DatabaseErrorKind};
 use std::convert::From;
 

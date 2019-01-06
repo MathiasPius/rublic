@@ -9,7 +9,8 @@ pub enum Error {
 
     #[fail(display = "Missing Resource Parameter: {}", _0)]
     MissingResourceParameter(String),
-
+/*
     #[fail(display = "Unknown Error")]
     Unknown
+*/
 }

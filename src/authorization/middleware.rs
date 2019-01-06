@@ -10,7 +10,6 @@ use actix_web_httpauth::extractors::{
 use crate::app::AppState;
 use super::messages::*;
 use super::models::*;
-use super::errors::Error;
 use super::ValidateClaim;
 
 fn expand_implied_claims(claim: &str) -> &[&str] {
