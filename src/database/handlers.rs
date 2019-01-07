@@ -101,7 +101,7 @@ impl Handler<CreateUser> for DbExecutor {
 
     fn handle(&mut self, msg: CreateUser, _: &mut Self::Context) -> Self::Result {
         if msg.friendly_name == "admin" {
-            return Err(Error::DataConflict("admin username is reserved".into()));
+            Err(Error::DataConflict("admin username is reserved".into()))
         } else {
             self.with_connection(|conn| {
                 let new_user = User {
@@ -207,7 +207,7 @@ impl Handler<SetGroupUsers> for DbExecutor {
     fn handle(&mut self, msg: SetGroupUsers, _: &mut Self::Context) -> Self::Result {
         self.with_connection(|conn| {
 
-            let mappings: Vec<UserGroupMapping> = (&msg.user_ids).into_iter().map(|id| {
+            let mappings: Vec<UserGroupMapping> = (&msg.user_ids).iter().map(|id| {
                 UserGroupMapping {
                     user_id: id.clone(),
                     group_id: msg.group_id.clone()
@@ -239,7 +239,7 @@ impl Handler<SetGroupDomains> for DbExecutor {
     fn handle(&mut self, msg: SetGroupDomains, _: &mut Self::Context) -> Self::Result {
         self.with_connection(|conn| {
 
-            let mappings: Vec<DomainGroupMapping> = (&msg.fqdns).into_iter().map(|id| {
+            let mappings: Vec<DomainGroupMapping> = (&msg.fqdns).iter().map(|id| {
                 DomainGroupMapping {
                     domain_id: id.clone(),
                     group_id: msg.group_id.clone()

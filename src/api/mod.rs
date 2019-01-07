@@ -26,7 +26,7 @@ pub enum ResultType {
 
 pub fn make_result<T: serde::Serialize>(result_type: ResultType) 
     -> impl FnOnce(Result<T, ServiceError>) -> Result<HttpResponse, actix_web::Error> {
-    return move |result: Result<T, ServiceError>| {
+    move |result: Result<T, ServiceError>| {
         match result {
             Ok(data) => {
                 match result_type {

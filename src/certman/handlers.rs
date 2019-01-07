@@ -63,7 +63,7 @@ fn parse_certificate(raw: &[u8]) -> Result<PemFileContents, Error> {
     }
 }
 
-fn read_pem_file(filename: &String) -> Result<PemFileContents, Error> {
+fn read_pem_file(filename: &str) -> Result<PemFileContents, Error> {
     let mut bytes = Vec::new();
 
     match File::open(&filename) {
@@ -89,11 +89,11 @@ impl Handler<CertificateDiscovered> for CertificateManager {
 
         parse_filename(&filename).and_then(|(friendly_name, version)| {
         read_pem_file(&path_str).and_then(|contents| {
-            return self.db.send(GetDomainByFqdn { fqdn }).flatten()
+            self.db.send(GetDomainByFqdn { fqdn }).flatten()
                 .and_then(|domain| {
                     match contents {
                         PemFileContents::PublicCertificate(cert) => {
-                            return  Ok(Certificate {
+                            Ok(Certificate {
                                 is_private: false,
                                 id: version,
                                 domain_id: domain.id,
@@ -104,7 +104,7 @@ impl Handler<CertificateDiscovered> for CertificateManager {
                             })
                         },
                         PemFileContents::PrivateKey(_) => {
-                            return Ok(Certificate {
+                            Ok(Certificate {
                                 is_private: true,
                                 id: version,
                                 domain_id: domain.id,

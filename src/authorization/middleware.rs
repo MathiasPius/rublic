@@ -18,7 +18,7 @@ fn expand_implied_claims(claim: &str) -> &[&str] {
     } else if claim == "public" {
         return &["public"];
     }
-    return &[];
+    &[]
 }
 
 pub struct ClaimsProviderMiddleware { }
