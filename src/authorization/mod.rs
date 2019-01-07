@@ -55,7 +55,7 @@ impl<S> ValidateClaim for HttpRequest<S> {
                 // 
                 // ... was present in the HttpRequest's claims.
 
-                return match params.get(&required_claim.subject) {
+                match params.get(&required_claim.subject) {
                     Some(subject) => {
                         let resolved_claim = Claim { 
                             subject: subject.into(), 
@@ -63,12 +63,12 @@ impl<S> ValidateClaim for HttpRequest<S> {
                         };
 
                         if actual_claims.contains(&resolved_claim) {
-                            return Ok(());
+                            continue;
                         }
 
-                        Err(Error::NotAuthorized(resolved_claim.permission, resolved_claim.subject))
+                        return Err(Error::NotAuthorized(resolved_claim.permission, resolved_claim.subject));
                     },
-                    None => Err(Error::MissingResourceParameter(required_claim.subject.clone()))
+                    None => return Err(Error::MissingResourceParameter(required_claim.subject.clone()))
                 }
             }
         } else {
