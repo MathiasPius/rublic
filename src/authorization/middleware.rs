@@ -1,12 +1,13 @@
 use futures::Future;
 use std::collections::HashSet;
-use actix_web::{HttpRequest, HttpResponse, Result, FromRequest};
+use actix_web::{HttpRequest, Result, FromRequest, ResponseError};
 use actix_web::middleware::{Middleware, Started};
 use actix_web_httpauth::extractors::{
     basic::{BasicAuth, Config as BasicConfig},
     bearer::{BearerAuth, Config as BearerConfig}
 };
 
+use crate::errors::ServiceError;
 use crate::app::AppState;
 use super::messages::*;
 use super::models::*;
@@ -25,10 +26,6 @@ pub struct ClaimsProviderMiddleware { }
 
 impl Middleware<AppState> for ClaimsProviderMiddleware {
     fn start(&self, req: &HttpRequest<AppState>) -> Result<Started> {
-
-        
-
-
         if let Ok(basic) = BasicAuth::from_request(&req, &BasicConfig::default()) {
             // Attempt to authorize the user, and if it worked,
             // tag the request with their claims, otherwise return unauthorized
@@ -51,8 +48,8 @@ impl Middleware<AppState> for ClaimsProviderMiddleware {
                     Ok(())
                 });
 
-            if claims.is_err() {
-                return Ok(Started::Response(HttpResponse::Unauthorized().finish()));
+            if let Err(e) = claims {
+                return Ok(Started::Response(e.error_response()));
             }
         } else if let Ok(bearer) = BearerAuth::from_request(&req, &BearerConfig::default()) {
             let claims = req.state().authman
@@ -64,8 +61,8 @@ impl Middleware<AppState> for ClaimsProviderMiddleware {
                     Ok(())
                 });
 
-            if claims.is_err() {
-                return Ok(Started::Response(HttpResponse::Unauthorized().finish()));
+            if let Err(e) = claims {
+                return Ok(Started::Response(e.error_response()));
             }
         }
 
@@ -79,10 +76,9 @@ pub struct ClaimsCheckerMiddleware {
 
 impl Middleware<AppState> for ClaimsCheckerMiddleware {
     fn start(&self, req: &HttpRequest<AppState>) -> Result<Started> {
-        if req.validate_claims(&self.required_claims).is_err() {
-            Ok(Started::Response(HttpResponse::Unauthorized().finish()))
-        } else {
-            Ok(Started::Done)
+        match req.validate_claims(&self.required_claims) {
+            Ok(()) => Ok(Started::Done),
+            Err(e) => Ok(Started::Response(ServiceError::from(e).error_response()))
         }
     }
 }

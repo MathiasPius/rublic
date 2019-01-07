@@ -54,6 +54,12 @@ impl From<crate::database::errors::Error> for ServiceError {
     }
 }
 
+impl From<crate::authorization::errors::Error> for ServiceError {
+    fn from(_: crate::authorization::errors::Error) -> Self {
+        ServiceError::InternalServerError
+    }
+}
+
 impl From<std::io::Error> for ServiceError {
     fn from(_e: std::io::Error) -> Self {
         ServiceError::InternalServerError

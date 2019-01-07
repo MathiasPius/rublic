@@ -77,6 +77,9 @@ fn read_pem_file(filename: &str) -> Result<PemFileContents, Error> {
     }
 }
 
+use std::io::Error as IoError;
+use std::io::ErrorKind::InvalidInput;
+
 impl Handler<CertificateDiscovered> for CertificateManager {
     type Result = Result<Certificate, Error>;
 
@@ -85,7 +88,9 @@ impl Handler<CertificateDiscovered> for CertificateManager {
         let fqdn = msg.fqdn;
 
         let path_str: String = path.to_string_lossy().into();
-        let filename: String = path.file_name().unwrap().to_string_lossy().into();
+        let filename: String = path.file_name()
+            .ok_or_else(|| Error::FileError(IoError::from(InvalidInput)))?
+            .to_string_lossy().into();
 
         parse_filename(&filename).and_then(|(friendly_name, version)| {
         read_pem_file(&path_str).and_then(|contents| {
