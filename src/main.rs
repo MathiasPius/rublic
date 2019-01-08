@@ -30,7 +30,7 @@ mod errors;
 mod cryptoutil;
 mod database;
 mod watcher;
-mod certman;
+mod certificates;
 mod api;
 
 use actix::prelude::*;
@@ -38,7 +38,7 @@ use actix_web::server;
 use diesel::{r2d2::ConnectionManager, MysqlConnection};
 use dotenv::dotenv;
 use crate::authorization::AuthorizationManager;
-use crate::certman::CertificateManager;
+use crate::certificates::CertificateManager;
 use crate::database::DbExecutor;
 use crate::watcher::ArchiveWatcher;
 use crate::config::{DATABASE_URL, LETSENCRYPT_ARCHIVE};

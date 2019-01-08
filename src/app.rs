@@ -1,7 +1,7 @@
 use actix::prelude::*;
 use actix_web::{middleware, App};
 use crate::database::DbExecutor;
-use crate::certman::CertificateManager;
+use crate::certificates::CertificateManager;
 use crate::authorization::AuthorizationManager;
 
 pub struct AppState {

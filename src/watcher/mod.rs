@@ -7,8 +7,8 @@ use futures::Future;
 use actix::{Actor, Context, Addr, Arbiter};
 use crate::database::DbExecutor;
 use crate::database::messages::{CreateDomain};
-use crate::certman::messages::{CertificateDiscovered, CertificateDisappeared};
-use crate::certman::CertificateManager;
+use crate::certificates::messages::{CertificateDiscovered, CertificateDisappeared};
+use crate::certificates::CertificateManager;
 use self::models::{FileType, EventType, DirectoryWatcher};
 
 pub struct ArchiveWatcher {
