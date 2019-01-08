@@ -27,3 +27,4 @@ inotify="0.6.1"
 actix-web-httpauth="0.1.0"
 jsonwebtoken="5.0.0"
 uuid = { version = "0.7", features = ["serde", "v4"] }
+log="0.4.6"

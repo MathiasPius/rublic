@@ -61,6 +61,8 @@ impl Actor for ArchiveWatcher {
         let mut watcher = DirectoryWatcher::new(self.dir.clone())
             .expect("unable to launch archive watcher");
 
+        info!("watching archive: {}", self.dir.to_string_lossy());
+
         loop {
             if let Ok(event) = watcher.get_event() {
                 if event.file_type != FileType::Directory {
@@ -68,9 +70,11 @@ impl Actor for ArchiveWatcher {
                 }
 
                 if event.event_type == EventType::Updated {
+                    info!("discovered domain: {}", event.path.to_string_lossy());
                     self.watch(event.path);
                 } else if event.event_type == EventType::Deleted 
                        && self.children.contains_key(&event.path) {
+                    info!("domain removed: {}", event.path.to_string_lossy());
                     self.children.remove(&event.path);
                 }
             }
@@ -99,6 +103,8 @@ impl Actor for DomainWatcher {
         let mut watcher = DirectoryWatcher::new(self.dir.clone())
             .expect("unable to launch domain watcher");
 
+        info!("watching domain: {}", self.dir.to_string_lossy());
+
         loop {
             if let Ok(event) = watcher.get_event() {
                 if event.file_type != FileType::File {
@@ -106,8 +112,10 @@ impl Actor for DomainWatcher {
                 }
 
                 if event.event_type == EventType::Updated {
+                    info!("discovered certificate: {}", event.path.to_string_lossy());
                     self.discovered_certificate(event.path);
                 } else if event.event_type == EventType::Deleted {
+                    info!("lost certificate: {}", event.path.to_string_lossy());
                     self.lost_certificate(event.path);
                 }
             }

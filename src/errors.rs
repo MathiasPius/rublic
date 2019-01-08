@@ -47,31 +47,36 @@ impl From<diesel::result::Error> for ServiceError {
 }
 
 impl From<crate::certificates::errors::Error> for ServiceError {
-    fn from(_: crate::certificates::errors::Error) -> Self {
+    fn from(e: crate::certificates::errors::Error) -> Self {
+        error!("uncaught error: {:?}", e);
         ServiceError::InternalServerError
     }
 }
 
 impl From<crate::database::errors::Error> for ServiceError {
-    fn from(_: crate::database::errors::Error) -> Self {
+    fn from(e: crate::database::errors::Error) -> Self {
+        error!("uncaught error: {:?}", e);
         ServiceError::InternalServerError
     }
 }
 
 impl From<crate::authorization::errors::Error> for ServiceError {
-    fn from(_: crate::authorization::errors::Error) -> Self {
+    fn from(e: crate::authorization::errors::Error) -> Self {
+        error!("uncaught error: {:?}", e);
         ServiceError::InternalServerError
     }
 }
 
 impl From<std::io::Error> for ServiceError {
-    fn from(_e: std::io::Error) -> Self {
+    fn from(e: std::io::Error) -> Self {
+        error!("uncaught error: {:?}", e);
         ServiceError::InternalServerError
     }
 }
 
 impl From<jwt::errors::Error> for ServiceError {
-    fn from(_e: jwt::errors::Error) -> Self {
+    fn from(e: jwt::errors::Error) -> Self {
+        error!("uncaught error: {:?}", e);
         ServiceError::InternalServerError
     }
 }

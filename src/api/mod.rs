@@ -50,6 +50,7 @@ pub enum ApiResult<T>
 
 impl ResponseError for ServiceError {
     fn error_response(&self) -> HttpResponse {
+        error!("{:?}", self);
         HttpResponse::InternalServerError().finish()
     }
 }

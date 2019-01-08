@@ -4,7 +4,7 @@ use std::io::Read;
 use std::fs::File;
 use openssl::x509::X509;
 use chrono::{NaiveDateTime};
-use crate::database::messages::{GetDomainByFqdn, DeleteCertificateByPath};
+use crate::database::messages::{GetDomainByFqdn, DeleteCertificateByPath, AddCertificateToDomain};
 use crate::database::models::Certificate;
 use crate::config::CERT_PATTERN;
 use super::CertificateManager;
@@ -124,6 +124,8 @@ impl Handler<CertificateDiscovered> for CertificateManager {
                 .from_err()
                 .wait()
             })
+        }).and_then(|cert| {
+            self.db.send(AddCertificateToDomain { cert }).flatten().from_err().wait()
         })
     }
 }

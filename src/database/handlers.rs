@@ -19,6 +19,7 @@ impl Handler<CreateDomain> for DbExecutor {
     type Result = Result<Domain, Error>;
 
     fn handle(&mut self, msg: CreateDomain, _: &mut Self::Context) -> Self::Result {
+        info!("creating domain: {}", msg.fqdn);
         self.with_connection(|conn| {
             let domain = Domain {
                 id: CryptoUtil::generate_uuid(),
@@ -311,6 +312,7 @@ impl Handler<AddCertificateToDomain> for DbExecutor {
     type Result = Result<Certificate, Error>;
 
     fn handle(&mut self, msg: AddCertificateToDomain, _: &mut Self::Context) -> Self::Result {
+        info!("adding certificate \"{}\" to domain {}", msg.cert.friendly_name, msg.cert.domain_id);
         self.with_connection(|conn| {
             diesel::replace_into(certificates::table)
                 .values(&msg.cert)

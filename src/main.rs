@@ -16,12 +16,12 @@ extern crate inotify;
 extern crate regex;
 extern crate openssl;
 extern crate jsonwebtoken as jwt;
+#[macro_use] extern crate log;
 #[macro_use] extern crate diesel;
 #[macro_use] extern crate failure;
 #[macro_use] extern crate lazy_static;
 
 mod app;
-
 mod config;
 #[macro_use] mod models;
 mod authorization;
@@ -45,9 +45,9 @@ use crate::config::{DATABASE_URL, LETSENCRYPT_ARCHIVE};
 
 
 fn main() {
+    dotenv().ok();
     env_logger::init();
 
-    dotenv().ok();
     crate::config::initialize();
 
     let sys = actix::System::new("Rublic");
