@@ -1,3 +1,6 @@
+pub mod error;
+pub mod models;
+
 use std::fs::{read_dir};
 use std::path::PathBuf;
 use std::collections::HashMap;
