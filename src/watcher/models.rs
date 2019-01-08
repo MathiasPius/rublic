@@ -2,7 +2,7 @@ use std::fs::read_dir;
 use std::path::PathBuf;
 use std::collections::VecDeque;
 use inotify::{Inotify, EventMask, WatchMask};
-use super::error::Error;
+use super::errors::Error;
 
 #[derive(PartialEq)]
 pub enum FileType {
