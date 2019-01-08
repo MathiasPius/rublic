@@ -21,7 +21,11 @@ pub enum ServiceError {
     Unauthorized
 }
 
-
+// ALL these handlers need to be expanded so the full error is still kept
+// in its entirety. This way we can log the whole message whenever a ServiceError
+// is converted to an HttpResponse at the boundary, and just return a plain old
+// InternalServerError from there. This way we log all relevant info, but don't
+// leak anything potentially sensitive information
 impl From<actix::MailboxError> for ServiceError {
     fn from(_: actix::MailboxError) -> Self {
         ServiceError::InternalServerError
