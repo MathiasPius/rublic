@@ -4,6 +4,7 @@ use std::collections::VecDeque;
 use inotify::{Inotify, EventMask, WatchMask};
 use super::error::Error;
 
+#[derive(PartialEq)]
 pub enum FileType {
     Directory,
     File
@@ -44,7 +45,7 @@ fn map_event(mask: EventMask) -> EventType {
 }
 
 impl DirectoryWatcher {
-    fn new(path: PathBuf) -> Result<Self, Error> {
+    pub fn new(path: PathBuf) -> Result<Self, Error> {
         let mut notifier = Inotify::init()?;
 
         notifier.add_watch(&path, WatchMask::ALL_EVENTS)?;
