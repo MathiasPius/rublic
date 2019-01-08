@@ -120,11 +120,11 @@ impl DirectoryWatcher {
     }
 
     pub fn get_event(&mut self) -> Result<Event, Error> {
-        if self.events.len() > 0 {
-            return Ok(self.events.pop_front().unwrap());
+        if !self.events.is_empty() {
+            Ok(self.events.pop_front().unwrap())
         } else {
             while self.read_events()? == 0 { }
-            return Ok(self.events.pop_front().unwrap())
+            Ok(self.events.pop_front().unwrap())
         }        
     }
 }

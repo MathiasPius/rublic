@@ -59,7 +59,7 @@ impl Actor for ArchiveWatcher {
 
     fn started(&mut self, _ctx: &mut Self::Context) {
         let mut watcher = DirectoryWatcher::new(self.dir.clone())
-            .expect(&format!("unable to launch DirectoryWatcher for {}", self.dir.to_string_lossy()));
+            .expect("unable to launch archive watcher");
 
         loop {
             if let Ok(event) = watcher.get_event() {
@@ -69,10 +69,9 @@ impl Actor for ArchiveWatcher {
 
                 if event.event_type == EventType::Updated {
                     self.watch(event.path);
-                } else if event.event_type == EventType::Deleted {
-                    if self.children.contains_key(&event.path) {
-                        self.children.remove(&event.path);
-                    }
+                } else if event.event_type == EventType::Deleted 
+                       && self.children.contains_key(&event.path) {
+                    self.children.remove(&event.path);
                 }
             }
         }
@@ -98,7 +97,7 @@ impl Actor for DomainWatcher {
     fn started(&mut self, _ctx: &mut Self::Context) {
 
         let mut watcher = DirectoryWatcher::new(self.dir.clone())
-            .expect(&format!("unable to launch DirectoryWatcher for {}", self.dir.to_string_lossy()));
+            .expect("unable to launch domain watcher");
 
         loop {
             if let Ok(event) = watcher.get_event() {
