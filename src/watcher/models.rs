@@ -55,31 +55,32 @@ impl DirectoryWatcher {
             path   
         };
 
-        watcher.generate_initial_events();
+        watcher.generate_initial_events()?;
         Ok(watcher)
     }
 
-    fn generate_initial_events(&mut self) {
-        if let Ok(entries) = read_dir(&self.path) {
-            for entry in entries {
-                if let Ok(entry) = entry {
-                    if let Ok(file_type) = entry.file_type() {
-                        
-                        let file_type = if file_type.is_dir() {
-                            FileType::Directory
-                        } else {
-                            FileType::File
-                        };
+    fn generate_initial_events(&mut self) -> Result<(), Error> {
+        let entries = read_dir(&self.path)?;
 
-                        self.events.push_back(Event {
-                            path: entry.path(),
-                            event_type: EventType::Updated,
-                            file_type
-                        });
-                    }
+        for entry in entries {
+            if let Ok(entry) = entry {
+                if let Ok(file_type) = entry.file_type() {
+                    
+                    let file_type = if file_type.is_dir() {
+                        FileType::Directory
+                    } else {
+                        FileType::File
+                    };
+
+                    self.events.push_back(Event {
+                        path: entry.path(),
+                        event_type: EventType::Updated,
+                        file_type
+                    });
                 }
             }
         }
+        Ok(())
     }
 
     fn read_events(&mut self) -> Result<usize, Error> {
